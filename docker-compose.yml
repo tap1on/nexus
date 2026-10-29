@@ -5,6 +5,11 @@ services:
     ports:
       - "3000:3000"
     env_file: .env
+    environment:
+      # Absolute path inside the container: the CLI and the Prisma client can
+      # resolve relative file: URLs differently, which leaves the runtime
+      # staring at an empty database. Overrides the .env value.
+      DATABASE_URL: "file:/app/prisma/data/nexus.db"
     volumes:
       - nexus-data:/app/prisma/data
     # db push creates/updates the schema on first boot and after upgrades
@@ -14,9 +19,13 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
+    environment:
+      DATABASE_URL: "file:/app/prisma/data/nexus.db"
     volumes:
       - nexus-data:/app/prisma/data
-    command: npm run worker
+    # also ensures the schema: removes the race where the worker's boot sync
+    # runs before web has finished creating the tables
+    command: sh -c "npx prisma db push --skip-generate && npm run worker"
     depends_on:
       - web
 
