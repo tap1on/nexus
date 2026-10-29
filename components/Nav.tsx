@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ThemeToggle } from "./ThemeToggle";
+import { ThemeId } from "@/lib/theme";
 
 const MAIN = [
   { href: "/", label: "Dashboard", icon: "◈" },
@@ -20,9 +22,11 @@ const ADMIN = [
 export function Nav({
   isAdmin,
   userName,
+  theme,
 }: {
   isAdmin: boolean;
   userName: string;
+  theme: ThemeId;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -57,8 +61,9 @@ export function Nav({
           </>
         )}
       </nav>
-      <div className="p-4 border-t border-edge">
-        <p className="text-sm text-ink-2 mb-2 truncate">{userName}</p>
+      <div className="p-4 border-t border-edge space-y-3">
+        <ThemeToggle theme={theme} />
+        <p className="text-sm text-ink-2 truncate">{userName}</p>
         <button onClick={logout} className="btn w-full text-[0.6rem]">
           Recall
         </button>

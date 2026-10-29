@@ -23,6 +23,8 @@
   /* data series (validated, dark mode) */
   --series-spend: #b98b2d;
   --series-revenue: #1899cd;
+  --chart-grid: rgba(36, 49, 80, 0.6);
+  --chart-cursor: rgba(77, 210, 255, 0.35);
 
   /* status (always paired with sign/icon, never color-alone) */
   --good: #3fb950;
@@ -202,4 +204,169 @@ h1, h2, h3, .font-display {
 .scanline {
   background: linear-gradient(90deg, transparent, rgba(77, 210, 255, 0.5), transparent);
   height: 1px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Theme: "clean" — flat, light, Keitaro-style admin look.
+   Selected via <html data-theme="clean"> (see lib/theme.ts). Everything
+   below only re-skins; layout and markup are shared with the Nexus theme.
+   ══════════════════════════════════════════════════════════════════════ */
+html[data-theme="clean"] {
+  color-scheme: light;
+
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
+  --surface-3: #f1f4f8;
+  --border: #e1e6ee;
+  --border-gold: #e1e6ee;
+
+  --ink: #1f2937;
+  --ink-2: #4b5563;
+  --ink-3: #6b7280;
+
+  /* one blue accent replaces gold + psi */
+  --gold: #2f6fed;
+  --gold-deep: #1f55c4;
+  --psi: #2f6fed;
+  --psi-deep: #1f55c4;
+
+  --series-spend: #d97706;
+  --series-revenue: #2f6fed;
+  --chart-grid: #e8ecf2;
+  --chart-cursor: rgba(47, 111, 237, 0.3);
+
+  --good: #15803d;
+  --bad: #dc2626;
+  --warn: #b45309;
+}
+
+html[data-theme="clean"] body {
+  background: var(--bg);
+  background-image: none;
+  font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+html[data-theme="clean"] h1,
+html[data-theme="clean"] h2,
+html[data-theme="clean"] h3,
+html[data-theme="clean"] .font-display {
+  font-family: inherit;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+/* tone down the sci-fi letter-spacing utilities without touching markup */
+html[data-theme="clean"] [class*="tracking-"] {
+  letter-spacing: 0.03em;
+}
+
+html[data-theme="clean"] .panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+html[data-theme="clean"] .panel::before,
+html[data-theme="clean"] .panel::after {
+  display: none;
+}
+
+html[data-theme="clean"] .khala-rule,
+html[data-theme="clean"] .scanline {
+  background: var(--border);
+}
+
+html[data-theme="clean"] .input,
+html[data-theme="clean"] .select {
+  background: var(--surface);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  padding: 0.4rem 0.6rem;
+}
+html[data-theme="clean"] .input:focus,
+html[data-theme="clean"] .select:focus {
+  border-color: var(--psi);
+  box-shadow: 0 0 0 2px rgba(47, 111, 237, 0.15);
+}
+
+html[data-theme="clean"] .btn {
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--ink-2);
+  background: var(--surface);
+}
+html[data-theme="clean"] .btn:hover {
+  background: var(--surface-3);
+  box-shadow: none;
+}
+html[data-theme="clean"] .btn-psi {
+  border-color: var(--psi);
+  background: var(--psi);
+  color: #ffffff;
+}
+html[data-theme="clean"] .btn-psi:hover {
+  background: var(--psi-deep);
+  border-color: var(--psi-deep);
+}
+html[data-theme="clean"] .btn-danger {
+  border-color: var(--border);
+  color: var(--bad);
+  background: var(--surface);
+}
+html[data-theme="clean"] .btn-danger:hover {
+  background: #fef2f2;
+}
+
+html[data-theme="clean"] .nav-link {
+  margin: 1px 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-left: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+html[data-theme="clean"] .nav-link:hover {
+  background: var(--surface-3);
+}
+html[data-theme="clean"] .nav-link.active {
+  color: var(--psi);
+  background: rgba(47, 111, 237, 0.08);
+  font-weight: 500;
+}
+
+html[data-theme="clean"] .data-table {
+  font-size: 0.85rem;
+}
+html[data-theme="clean"] .data-table th {
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+  background: var(--surface-3);
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0.6rem;
+}
+html[data-theme="clean"] .data-table th.sorted {
+  color: var(--psi);
+}
+html[data-theme="clean"] .data-table td {
+  padding: 0.45rem 0.6rem;
+}
+html[data-theme="clean"] .data-table tbody tr:hover {
+  background: #f8fafc;
+}
+html[data-theme="clean"] .data-table tr.totals td {
+  color: var(--ink);
+  background: var(--surface-3);
+  border-top: 1px solid var(--border);
 }

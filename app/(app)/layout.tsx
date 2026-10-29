@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getSessionUser } from "@/lib/auth";
+import { THEME_COOKIE, normalizeTheme } from "@/lib/theme";
 import { Nav } from "@/components/Nav";
 
 export default async function AppLayout({
@@ -9,6 +11,8 @@ export default async function AppLayout({
 }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  const jar = await cookies();
+  const theme = normalizeTheme(jar.get(THEME_COOKIE)?.value);
 
   return (
     <div className="min-h-screen flex">
@@ -20,7 +24,7 @@ export default async function AppLayout({
             Media Buying Tracker
           </p>
         </div>
-        <Nav isAdmin={user.role === "ADMIN"} userName={user.name} />
+        <Nav isAdmin={user.role === "ADMIN"} userName={user.name} theme={theme} />
       </aside>
       <main className="flex-1 min-w-0 p-6">{children}</main>
     </div>

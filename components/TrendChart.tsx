@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -12,10 +13,39 @@ import {
 } from "recharts";
 import { fmtMoney } from "@/lib/format";
 
-const SPEND = "#b98b2d";
-const REVENUE = "#1899cd";
-const GRID = "rgba(36, 49, 80, 0.6)";
-const INK2 = "#9aa5bd";
+// Recharts needs literal colors, so read the active theme's CSS variables.
+// Defaults match the "nexus" theme for the server render.
+const DEFAULT_COLORS = {
+  spend: "#b98b2d",
+  revenue: "#1899cd",
+  grid: "rgba(36, 49, 80, 0.6)",
+  ink2: "#9aa5bd",
+  cursor: "rgba(77, 210, 255, 0.35)",
+};
+
+function useThemeColors() {
+  const [colors, setColors] = useState(DEFAULT_COLORS);
+  useEffect(() => {
+    const read = () => {
+      const s = getComputedStyle(document.documentElement);
+      const v = (name: string, fallback: string) =>
+        s.getPropertyValue(name).trim() || fallback;
+      setColors({
+        spend: v("--series-spend", DEFAULT_COLORS.spend),
+        revenue: v("--series-revenue", DEFAULT_COLORS.revenue),
+        grid: v("--chart-grid", DEFAULT_COLORS.grid),
+        ink2: v("--ink-2", DEFAULT_COLORS.ink2),
+        cursor: v("--chart-cursor", DEFAULT_COLORS.cursor),
+      });
+    };
+    read();
+    // Re-read when the theme toggle flips <html data-theme>.
+    const mo = new MutationObserver(read);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => mo.disconnect();
+  }, []);
+  return colors;
+}
 
 type Point = { date: string; spend: number; revenue: number; profit: number };
 
@@ -82,6 +112,7 @@ function ChartTooltip({
 }
 
 export function TrendChart({ daily }: { daily: Point[] }) {
+  const { spend: SPEND, revenue: REVENUE, grid: GRID, ink2: INK2, cursor } = useThemeColors();
   return (
     <div className="panel p-4">
       <p className="text-[0.62rem] text-ink-3 uppercase tracking-[0.2em] mb-3">
@@ -106,7 +137,7 @@ export function TrendChart({ daily }: { daily: Point[] }) {
           />
           <Tooltip
             content={<ChartTooltip />}
-            cursor={{ stroke: "rgba(77, 210, 255, 0.35)", strokeWidth: 1 }}
+            cursor={{ stroke: cursor, strokeWidth: 1 }}
           />
           <Legend
             verticalAlign="top"
