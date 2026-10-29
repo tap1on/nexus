@@ -114,6 +114,22 @@ model EverflowStat {
   @@index([campaignId])
 }
 
+// Creative info per Meta ad: thumbnail + the post the ad promotes.
+// Thumbnail bytes are cached on disk (see lib/thumbs.ts) because Meta's
+// CDN URLs are signed and expire.
+model AdCreative {
+  adId             String    @id
+  creativeId       String    @default("")
+  thumbnailUrl     String    @default("") // signed Meta CDN URL (expires)
+  imageUrl         String    @default("")
+  videoId          String    @default("")
+  storyId          String    @default("") // effective_object_story_id = "<pageId>_<postId>"
+  instagramMediaId String    @default("")
+  postUrl          String    @default("") // facebook.com permalink built from storyId
+  fetchedAt        DateTime  @default(now())
+  cachedAt         DateTime? // when thumbnail bytes were written to the disk cache
+}
+
 model SyncRun {
   id           String    @id @default(cuid())
   kind         String // META | EVERFLOW

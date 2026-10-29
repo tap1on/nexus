@@ -50,6 +50,9 @@ export function StatsTable({
 }) {
   const [sortKey, setSortKey] = useState<ColKey | "label">("spend");
   const [desc, setDesc] = useState(true);
+  // Floating creative preview (position: fixed escapes the table's overflow clip).
+  const [preview, setPreview] = useState<{ key: string; x: number; y: number } | null>(null);
+  const [broken, setBroken] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => {
     const copy = [...rows];
@@ -110,17 +113,46 @@ export function StatsTable({
           {sorted.map((r) => (
             <tr key={r.key}>
               <td>
-                {r.href ? (
-                  <Link
-                    href={r.href}
-                    className="text-ink hover:text-psi hover:underline underline-offset-2"
-                    title="Drill down"
-                  >
-                    {r.label} <span className="text-ink-3 text-[0.72rem]">›</span>
-                  </Link>
-                ) : (
-                  <span className="text-ink">{r.label}</span>
-                )}
+                <span className="flex items-center gap-2 min-w-0">
+                  {r.media?.thumb && !broken.has(r.key) && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/thumb/${r.key}`}
+                      alt=""
+                      loading="lazy"
+                      className="w-8 h-8 object-cover shrink-0 border border-edge cursor-zoom-in"
+                      onMouseEnter={(e) =>
+                        setPreview({ key: r.key, x: e.clientX, y: e.clientY })
+                      }
+                      onMouseMove={(e) =>
+                        setPreview({ key: r.key, x: e.clientX, y: e.clientY })
+                      }
+                      onMouseLeave={() => setPreview(null)}
+                      onError={() => setBroken((s) => new Set(s).add(r.key))}
+                    />
+                  )}
+                  {r.media?.postUrl ? (
+                    <a
+                      href={r.media.postUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-ink hover:text-psi hover:underline underline-offset-2"
+                      title={r.media.isPost ? "Open the Facebook post" : "Open in Ads Manager"}
+                    >
+                      {r.label} <span className="text-ink-3 text-[0.72rem]">↗</span>
+                    </a>
+                  ) : r.href ? (
+                    <Link
+                      href={r.href}
+                      className="text-ink hover:text-psi hover:underline underline-offset-2"
+                      title="Drill down"
+                    >
+                      {r.label} <span className="text-ink-3 text-[0.72rem]">›</span>
+                    </Link>
+                  ) : (
+                    <span className="text-ink">{r.label}</span>
+                  )}
+                </span>
                 {r.sublabel && (
                   <span className="block text-[0.72rem] text-ink-3 max-w-72 truncate">
                     {r.sublabel}
@@ -152,6 +184,25 @@ export function StatsTable({
           </tr>
         </tbody>
       </table>
+      {preview && (
+        <div
+          className="panel p-1 pointer-events-none"
+          style={{
+            position: "fixed",
+            zIndex: 50,
+            // keep the preview inside the viewport: flip left/up near the edges
+            left: Math.min(preview.x + 16, window.innerWidth - 336),
+            top: Math.min(preview.y + 16, window.innerHeight - 336),
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/thumb/${preview.key}`}
+            alt=""
+            className="block max-w-80 max-h-80 object-contain"
+          />
+        </div>
+      )}
     </div>
   );
 }

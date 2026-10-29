@@ -62,6 +62,95 @@ export async function discoverAdAccounts(
   return out;
 }
 
+export type MetaAdCreative = {
+  adId: string;
+  creativeId: string;
+  thumbnailUrl: string;
+  imageUrl: string;
+  videoId: string;
+  storyId: string; // effective_object_story_id
+  instagramMediaId: string;
+};
+
+const THUMB_SIZE = 512;
+const IDS_PER_CALL = 50;
+
+/**
+ * Creative details for a set of ads. Two batched node reads per 50 ads:
+ * ad -> creative id, then creative -> fields with a sized thumbnail (the
+ * thumbnail_width/height params only apply on the creative node itself).
+ * Ads whose creative can't be read are simply left out.
+ */
+export async function fetchAdCreatives(
+  token: string,
+  adIds: string[]
+): Promise<MetaAdCreative[]> {
+  const out: MetaAdCreative[] = [];
+  for (let i = 0; i < adIds.length; i += IDS_PER_CALL) {
+    const chunk = adIds.slice(i, i + IDS_PER_CALL);
+    const adParams = new URLSearchParams({
+      ids: chunk.join(","),
+      fields: "creative{id}",
+      access_token: token,
+    });
+    const ads = await metaGet<Record<string, { creative?: { id?: string } }>>(
+      `${BASE}/?${adParams.toString()}`
+    );
+    const creativeToAd = new Map<string, string>();
+    for (const adId of chunk) {
+      const cid = ads[adId]?.creative?.id;
+      if (cid) creativeToAd.set(cid, adId);
+    }
+    if (creativeToAd.size === 0) continue;
+
+    const crParams = new URLSearchParams({
+      ids: [...creativeToAd.keys()].join(","),
+      fields:
+        "thumbnail_url,image_url,video_id,effective_object_story_id,effective_instagram_media_id",
+      thumbnail_width: String(THUMB_SIZE),
+      thumbnail_height: String(THUMB_SIZE),
+      access_token: token,
+    });
+    const creatives = await metaGet<
+      Record<
+        string,
+        {
+          thumbnail_url?: string;
+          image_url?: string;
+          video_id?: string;
+          effective_object_story_id?: string;
+          effective_instagram_media_id?: string;
+        }
+      >
+    >(`${BASE}/?${crParams.toString()}`);
+    for (const [cid, adId] of creativeToAd) {
+      const c = creatives[cid];
+      if (!c) continue;
+      out.push({
+        adId,
+        creativeId: cid,
+        thumbnailUrl: c.thumbnail_url ?? "",
+        imageUrl: c.image_url ?? "",
+        videoId: c.video_id ?? "",
+        storyId: c.effective_object_story_id ?? "",
+        instagramMediaId: c.effective_instagram_media_id ?? "",
+      });
+    }
+  }
+  return out;
+}
+
+/** facebook.com permalink for a promoted post ("<pageId>_<postId>"); "" if unknown. */
+export function postUrlFromStoryId(storyId: string): string {
+  const m = /^(\d+)_(\d+)$/.exec(storyId);
+  return m ? `https://www.facebook.com/${m[1]}/posts/${m[2]}` : "";
+}
+
+/** Ads Manager deep link to one ad (fallback when there is no FB post). */
+export function adsManagerUrl(metaAccountId: string, adId: string): string {
+  return `https://www.facebook.com/adsmanager/manage/ads?act=${metaAccountId}&selected_ad_ids=${adId}`;
+}
+
 /**
  * Daily ad-level insights for one account over [since, until] (inclusive,
  * account-timezone dates). Handles pagination.

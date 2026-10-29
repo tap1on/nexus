@@ -5,6 +5,7 @@ import {
   MetricRow,
   RawTotals,
 } from "./metrics";
+import { adsManagerUrl } from "./meta";
 
 export type GroupBy = "buyer" | "account" | "campaign" | "adset" | "ad" | "date";
 
@@ -31,6 +32,7 @@ export type StatsResult = {
 
 type AdContext = {
   accountId: string;
+  metaAccountId: string;
   accountName: string;
   ownerId: string | null;
   ownerName: string;
@@ -65,6 +67,7 @@ async function buildAdContextMap(
       adAccount: {
         select: {
           name: true,
+          metaAccountId: true,
           ownerId: true,
           owner: { select: { name: true } },
         },
@@ -75,6 +78,7 @@ async function buildAdContextMap(
   for (const a of ads) {
     map.set(a.adId, {
       accountId: a.adAccountId,
+      metaAccountId: a.adAccount.metaAccountId,
       accountName: a.adAccount.name,
       ownerId: a.adAccount.ownerId,
       ownerName: a.adAccount.owner?.name ?? "Unassigned",
@@ -223,6 +227,25 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
     .sort((a, b) =>
       q.groupBy === "date" ? a.key.localeCompare(b.key) : b.spend - a.spend
     );
+
+  // Ad level: attach thumbnail availability and the post link. Ads without
+  // a Facebook post (e.g. Instagram-only) fall back to an Ads Manager link.
+  if (q.groupBy === "ad" && rows.length > 0) {
+    const creatives = await db.adCreative.findMany({
+      where: { adId: { in: rows.map((r) => r.key) } },
+      select: { adId: true, postUrl: true, cachedAt: true, thumbnailUrl: true, imageUrl: true },
+    });
+    const byAd = new Map(creatives.map((c) => [c.adId, c]));
+    for (const r of rows) {
+      const c = byAd.get(r.key);
+      const ctx = adMap.get(r.key);
+      r.media = {
+        thumb: Boolean(c && (c.cachedAt || c.thumbnailUrl || c.imageUrl)),
+        postUrl: c?.postUrl || (ctx ? adsManagerUrl(ctx.metaAccountId, r.key) : ""),
+        isPost: Boolean(c?.postUrl),
+      };
+    }
+  }
 
   const dailySeries = [...daily.entries()]
     .sort(([a], [b]) => a.localeCompare(b))

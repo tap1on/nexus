@@ -102,6 +102,20 @@ with row counts and errors. Admins can trigger a manual **Sync Now**.
 - Numbers for recent days keep moving between syncs (Meta restates spend, EF
   conversions keep arriving); yesterday is final after the nightly deep pass.
 
+## 5b. Ad thumbnails and post links
+
+- After each Meta pull the worker reads the creative of every ad it hasn't
+  seen before (`AdCreative`): thumbnail URL, image/video id and the promoted
+  post id. Two batched Graph calls per 50 new ads.
+- Meta's thumbnail URLs are signed and expire, so the bytes are cached on disk
+  in `prisma/data/thumbs/` (inside the `nexus-data` volume; override with
+  `THUMB_CACHE_DIR`) and served from `/api/thumb/<adId>`. A miss with an
+  expired URL re-reads the creative once and retries.
+- Ad-level rows show the thumbnail inline (hover for a large preview) and the
+  ad name links to the Facebook post. Dark posts open only for people with
+  access to the page (your BM users). Ads without a Facebook post, e.g.
+  Instagram-only, link to the ad in Ads Manager instead.
+
 ## 6. Scheduled jobs / limits
 
 - Meta: one insights request per ad account per pass (paginated). ~15 accounts
