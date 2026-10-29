@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { LinkGenerator } from "@/components/LinkGenerator";
 
 export default async function LinksPage() {
-  const user = (await getSessionUser())!;
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
   const [accounts, offers] = await Promise.all([
     db.adAccount.findMany({
       where: {

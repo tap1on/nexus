@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { queryStats, GroupBy } from "@/lib/stats";
@@ -16,7 +17,10 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const user = (await getSessionUser())!;
+  // Pages render in parallel with the layout, so the layout's redirect does
+  // not save us from a null session here.
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
   const sp = await searchParams;
 
   const today = todayBerlin();

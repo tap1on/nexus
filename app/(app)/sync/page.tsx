@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { SyncNowButton } from "@/components/SyncNowButton";
 
 export default async function SyncPage() {
-  const user = (await getSessionUser())!;
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
   const runs = await db.syncRun.findMany({
     orderBy: { startedAt: "desc" },
     take: 80,
