@@ -5,7 +5,7 @@ export const THEME_COOKIE = "nexus_theme";
 
 export const THEMES = [
   { id: "nexus", label: "Nexus (Protoss)" },
-  { id: "clean", label: "Clean (Keitaro-style)" },
+  { id: "clean", label: "Clean (dark)" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];

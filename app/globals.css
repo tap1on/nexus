@@ -207,38 +207,39 @@ h1, h2, h3, .font-display {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Theme: "clean" — flat, light, Keitaro-style admin look.
+   Theme: "clean" — flat, neutral dark, Keitaro-style admin look.
    Selected via <html data-theme="clean"> (see lib/theme.ts). Everything
    below only re-skins; layout and markup are shared with the Nexus theme.
    ══════════════════════════════════════════════════════════════════════ */
 html[data-theme="clean"] {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --bg: #f3f5f8;
-  --surface: #ffffff;
-  --surface-2: #ffffff;
-  --surface-3: #f1f4f8;
-  --border: #e1e6ee;
-  --border-gold: #e1e6ee;
+  /* neutral dark grays (no blue tint), like Keitaro's dark mode */
+  --bg: #15171b;
+  --surface: #1d2025;
+  --surface-2: #1d2025;
+  --surface-3: #262a31;
+  --border: #30353d;
+  --border-gold: #30353d;
 
-  --ink: #1f2937;
-  --ink-2: #4b5563;
-  --ink-3: #6b7280;
+  --ink: #e7e9ec;
+  --ink-2: #a9afb8;
+  --ink-3: #7e8591;
 
   /* one blue accent replaces gold + psi */
-  --gold: #2f6fed;
-  --gold-deep: #1f55c4;
-  --psi: #2f6fed;
-  --psi-deep: #1f55c4;
+  --gold: #4f8cff;
+  --gold-deep: #3b74e0;
+  --psi: #4f8cff;
+  --psi-deep: #3b74e0;
 
-  --series-spend: #d97706;
-  --series-revenue: #2f6fed;
-  --chart-grid: #e8ecf2;
-  --chart-cursor: rgba(47, 111, 237, 0.3);
+  --series-spend: #f0a330;
+  --series-revenue: #4f8cff;
+  --chart-grid: #2b3038;
+  --chart-cursor: rgba(79, 140, 255, 0.35);
 
-  --good: #15803d;
-  --bad: #dc2626;
-  --warn: #b45309;
+  --good: #4ade80;
+  --bad: #f87171;
+  --warn: #fbbf24;
 }
 
 html[data-theme="clean"] body {
@@ -267,7 +268,7 @@ html[data-theme="clean"] .panel {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 html[data-theme="clean"] .panel::before,
 html[data-theme="clean"] .panel::after {
@@ -289,7 +290,7 @@ html[data-theme="clean"] .select {
 html[data-theme="clean"] .input:focus,
 html[data-theme="clean"] .select:focus {
   border-color: var(--psi);
-  box-shadow: 0 0 0 2px rgba(47, 111, 237, 0.15);
+  box-shadow: 0 0 0 2px rgba(79, 140, 255, 0.2);
 }
 
 html[data-theme="clean"] .btn {
@@ -323,7 +324,7 @@ html[data-theme="clean"] .btn-danger {
   background: var(--surface);
 }
 html[data-theme="clean"] .btn-danger:hover {
-  background: #fef2f2;
+  background: rgba(248, 113, 113, 0.12);
 }
 
 html[data-theme="clean"] .nav-link {
@@ -338,7 +339,7 @@ html[data-theme="clean"] .nav-link:hover {
 }
 html[data-theme="clean"] .nav-link.active {
   color: var(--psi);
-  background: rgba(47, 111, 237, 0.08);
+  background: rgba(79, 140, 255, 0.12);
   font-weight: 500;
 }
 
@@ -363,7 +364,7 @@ html[data-theme="clean"] .data-table td {
   padding: 0.45rem 0.6rem;
 }
 html[data-theme="clean"] .data-table tbody tr:hover {
-  background: #f8fafc;
+  background: rgba(255, 255, 255, 0.03);
 }
 html[data-theme="clean"] .data-table tr.totals td {
   color: var(--ink);
