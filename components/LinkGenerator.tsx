@@ -96,7 +96,8 @@ export function LinkGenerator({
             </button>
             <p className="text-ink-3 text-xs">
               Carries sub1/sub3/sub4 (Meta macros) + source_id (your account id,
-              visible to the network for quality scoring).
+              visible to the network for quality scoring) + fbclid (Meta click
+              id, lets the network send Conversions API events back to Meta).
             </p>
           </div>
         </div>

@@ -16,13 +16,17 @@ Every Meta ad must send traffic to an Everflow tracking link carrying these
 parameters (Meta URL dynamic macros + the ad account id):
 
 ```
-&sub1={{campaign.id}}&sub3={{adset.id}}&sub4={{ad.id}}&source_id=<ad account id>
+&sub1={{campaign.id}}&sub3={{adset.id}}&sub4={{ad.id}}&source_id=<ad account id>&fbclid={fbclid}
 ```
 
 **Buyers don't build this by hand** — the **Link Generator** page does it:
 pick your ad account + offer, copy the full URL into the ad's Website URL
 field. Offers are managed by admins on the Everflow page (fetched live from
 the Everflow API, or added manually by pasting a tracking URL).
+
+`fbclid={fbclid}` passes the Meta click id to Everflow (single braces, per
+Everflow's partner attribution guide) so the network can send Conversions API
+events back to Meta. Nexus does not store it.
 
 `source_id` carries the Meta ad account id, so the network can score traffic
 quality per account, and Nexus can attribute stray revenue to an account on
