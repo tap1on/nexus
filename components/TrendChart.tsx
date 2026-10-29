@@ -115,9 +115,6 @@ export function TrendChart({ daily }: { daily: Point[] }) {
   const { spend: SPEND, revenue: REVENUE, grid: GRID, ink2: INK2, cursor } = useThemeColors();
   return (
     <div className="panel p-4">
-      <p className="text-[0.62rem] text-ink-3 uppercase tracking-[0.2em] mb-3">
-        Daily Spend vs Revenue
-      </p>
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={daily} margin={{ top: 6, right: 70, left: 4, bottom: 0 }}>
           <CartesianGrid stroke={GRID} vertical={false} />

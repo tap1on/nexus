@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth";
+import { collapseCookie } from "@/lib/ui-prefs";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { db } from "@/lib/db";
 import {
   queryStats,
@@ -14,7 +17,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { KpiTiles } from "@/components/KpiTiles";
 import { TrendChart } from "@/components/TrendChart";
 import { StatsTable } from "@/components/StatsTable";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtPct, fmtSigned } from "@/lib/format";
 
 const GROUPS: GroupBy[] = ["buyer", "account", "campaign", "adset", "ad", "date"];
 
@@ -36,6 +39,8 @@ export default async function DashboardPage({
   const user = await getSessionUser();
   if (!user) redirect("/login");
   const sp = await searchParams;
+  const jar = await cookies();
+  const isOpen = (id: string) => jar.get(collapseCookie(id))?.value !== "1";
 
   const today = todayBerlin();
   const from = sp.from && /^\d{4}-\d{2}-\d{2}$/.test(sp.from) ? sp.from : shiftDate(today, -6);
@@ -218,7 +223,27 @@ export default async function DashboardPage({
         })}
       </nav>
 
-      <KpiTiles totals={stats.totals} />
+      <CollapsibleSection
+        id="kpis"
+        title="Overview"
+        defaultOpen={isOpen("kpis")}
+        summary={
+          <>
+            Spend <span className="text-ink">{fmtMoney(stats.totals.spend)}</span>
+            {" · "}Revenue <span className="text-ink">{fmtMoney(stats.totals.revenue)}</span>
+            {" · "}Profit{" "}
+            <span className={stats.totals.profit >= 0 ? "text-good" : "text-bad"}>
+              {fmtSigned(stats.totals.profit, (n) => fmtMoney(n))}
+            </span>
+            {" · "}ROI{" "}
+            <span className={stats.totals.profit >= 0 ? "text-good" : "text-bad"}>
+              {stats.totals.roi === null ? "—" : fmtSigned(stats.totals.roi, (n) => fmtPct(n))}
+            </span>
+          </>
+        }
+      >
+        <KpiTiles totals={stats.totals} />
+      </CollapsibleSection>
 
       {user.role === "ADMIN" && stats.unmatchedRevenue > 0 && (
         <Link
@@ -236,7 +261,15 @@ export default async function DashboardPage({
         </Link>
       )}
 
-      {stats.daily.length > 1 && <TrendChart daily={stats.daily} />}
+      {stats.daily.length > 1 && (
+        <CollapsibleSection
+          id="chart"
+          title="Daily Spend vs Revenue"
+          defaultOpen={isOpen("chart")}
+        >
+          <TrendChart daily={stats.daily} />
+        </CollapsibleSection>
+      )}
 
       <StatsTable rows={rows} totals={stats.totals} groupBy={groupBy} />
     </div>
