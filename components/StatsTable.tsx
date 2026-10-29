@@ -131,17 +131,7 @@ export function StatsTable({
                       onError={() => setBroken((s) => new Set(s).add(r.key))}
                     />
                   )}
-                  {r.media?.postUrl ? (
-                    <a
-                      href={r.media.postUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-ink hover:text-psi hover:underline underline-offset-2"
-                      title={r.media.isPost ? "Open the Facebook post" : "Open in Ads Manager"}
-                    >
-                      {r.label} <span className="text-ink-3 text-[0.72rem]">↗</span>
-                    </a>
-                  ) : r.href ? (
+                  {r.href ? (
                     <Link
                       href={r.href}
                       className="text-ink hover:text-psi hover:underline underline-offset-2"

@@ -140,17 +140,6 @@ export async function fetchAdCreatives(
   return out;
 }
 
-/** facebook.com permalink for a promoted post ("<pageId>_<postId>"); "" if unknown. */
-export function postUrlFromStoryId(storyId: string): string {
-  const m = /^(\d+)_(\d+)$/.exec(storyId);
-  return m ? `https://www.facebook.com/${m[1]}/posts/${m[2]}` : "";
-}
-
-/** Ads Manager deep link to one ad (fallback when there is no FB post). */
-export function adsManagerUrl(metaAccountId: string, adId: string): string {
-  return `https://www.facebook.com/adsmanager/manage/ads?act=${metaAccountId}&selected_ad_ids=${adId}`;
-}
-
 /**
  * Daily ad-level insights for one account over [since, until] (inclusive,
  * account-timezone dates). Handles pagination.

@@ -6,8 +6,8 @@ export type MetricRow = {
   ids?: { accountId: string; campaignId: string; adsetId: string };
   /** drill-down target, filled in by the page */
   href?: string;
-  /** ad-level only: creative thumbnail availability + where the ad name links */
-  media?: { thumb: boolean; postUrl: string; isPost: boolean };
+  /** ad-level only: whether a creative thumbnail is available */
+  media?: { thumb: boolean };
   spend: number;
   revenue: number;
   profit: number;

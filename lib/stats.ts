@@ -5,7 +5,6 @@ import {
   MetricRow,
   RawTotals,
 } from "./metrics";
-import { adsManagerUrl } from "./meta";
 
 export type GroupBy = "buyer" | "account" | "campaign" | "adset" | "ad" | "date";
 
@@ -228,22 +227,16 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
       q.groupBy === "date" ? a.key.localeCompare(b.key) : b.spend - a.spend
     );
 
-  // Ad level: attach thumbnail availability and the post link. Ads without
-  // a Facebook post (e.g. Instagram-only) fall back to an Ads Manager link.
+  // Ad level: flag rows that have a creative thumbnail to show.
   if (q.groupBy === "ad" && rows.length > 0) {
     const creatives = await db.adCreative.findMany({
       where: { adId: { in: rows.map((r) => r.key) } },
-      select: { adId: true, postUrl: true, cachedAt: true, thumbnailUrl: true, imageUrl: true },
+      select: { adId: true, cachedAt: true, thumbnailUrl: true, imageUrl: true },
     });
     const byAd = new Map(creatives.map((c) => [c.adId, c]));
     for (const r of rows) {
       const c = byAd.get(r.key);
-      const ctx = adMap.get(r.key);
-      r.media = {
-        thumb: Boolean(c && (c.cachedAt || c.thumbnailUrl || c.imageUrl)),
-        postUrl: c?.postUrl || (ctx ? adsManagerUrl(ctx.metaAccountId, r.key) : ""),
-        isPost: Boolean(c?.postUrl),
-      };
+      r.media = { thumb: Boolean(c && (c.cachedAt || c.thumbnailUrl || c.imageUrl)) };
     }
   }
 

@@ -5,7 +5,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { db } from "./db";
-import { fetchAdCreatives, postUrlFromStoryId, MetaAdCreative } from "./meta";
+import { fetchAdCreatives, MetaAdCreative } from "./meta";
 
 export const THUMB_DIR =
   process.env.THUMB_CACHE_DIR || path.join(process.cwd(), "prisma", "data", "thumbs");
@@ -26,7 +26,6 @@ export async function storeCreatives(creatives: MetaAdCreative[]): Promise<void>
       videoId: c.videoId,
       storyId: c.storyId,
       instagramMediaId: c.instagramMediaId,
-      postUrl: postUrlFromStoryId(c.storyId),
       fetchedAt: new Date(),
     };
     await db.adCreative.upsert({
