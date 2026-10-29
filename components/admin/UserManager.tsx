@@ -51,6 +51,11 @@ export function UserManager({ users, selfId }: { users: Row[]; selfId: string })
     if (pw) patch(id, { password: pw });
   }
 
+  function rename(id: string, current: string) {
+    const name = prompt("New display name:", current)?.trim();
+    if (name && name !== current) patch(id, { name });
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -118,6 +123,9 @@ export function UserManager({ users, selfId }: { users: Row[]; selfId: string })
                 </td>
                 <td style={{ textAlign: "left" }}>
                   <div className="flex gap-2">
+                    <button className="btn text-[0.55rem] px-2 py-1" onClick={() => rename(u.id, u.name)}>
+                      Rename
+                    </button>
                     <button className="btn text-[0.55rem] px-2 py-1" onClick={() => resetPassword(u.id)}>
                       Reset PW
                     </button>

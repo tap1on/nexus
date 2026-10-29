@@ -17,12 +17,16 @@ const GROUPS = [
   { value: "date", label: "Day" },
 ];
 
+type Params = { from: string; to: string; group: string; buyer: string; account: string };
+
 export function FilterBar({
   from,
   to,
   groupBy,
   buyers,
   buyer,
+  accounts,
+  account,
   today,
 }: {
   from: string;
@@ -30,24 +34,28 @@ export function FilterBar({
   groupBy: string;
   buyers: Array<{ id: string; name: string }>;
   buyer?: string; // undefined = non-admin (no buyer filter shown)
+  accounts: Array<{ id: string; name: string; retired: boolean }>;
+  account: string; // "" = all accounts in scope
   today: string;
 }) {
   const router = useRouter();
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
 
-  function apply(params: Partial<{ from: string; to: string; group: string; buyer: string }>) {
-    const merged = {
+  function apply(params: Partial<Params>) {
+    const merged: Params = {
       from: params.from ?? f,
       to: params.to ?? t,
       group: params.group ?? groupBy,
       buyer: params.buyer ?? buyer ?? "",
+      account: params.account ?? account,
     };
     const qs = new URLSearchParams();
     qs.set("from", merged.from);
     qs.set("to", merged.to);
     qs.set("group", merged.group);
     if (merged.buyer) qs.set("buyer", merged.buyer);
+    if (merged.account) qs.set("account", merged.account);
     router.push(`/?${qs.toString()}`);
   }
 
@@ -103,7 +111,8 @@ export function FilterBar({
           <select
             className="select text-sm"
             value={buyer}
-            onChange={(e) => apply({ buyer: e.target.value })}
+            // switching buyer changes the account list, so drop the account pick
+            onChange={(e) => apply({ buyer: e.target.value, account: "" })}
           >
             <option value="">All buyers</option>
             {buyers.map((b) => (
@@ -113,6 +122,19 @@ export function FilterBar({
             ))}
           </select>
         )}
+        <select
+          className="select text-sm max-w-64"
+          value={account}
+          onChange={(e) => apply({ account: e.target.value })}
+        >
+          <option value="">All ad accounts</option>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+              {a.retired ? " (retired)" : ""}
+            </option>
+          ))}
+        </select>
         <label className="text-[0.65rem] text-ink-3 uppercase tracking-wider">
           Group by
         </label>

@@ -30,21 +30,28 @@ export default async function DashboardPage({
     ? (sp.group as GroupBy)
     : "campaign";
 
-  // Scope: buyers see only their accounts; admins can filter by buyer.
+  // Scope: buyers see only their accounts; admins can narrow to one buyer.
+  // Retired accounts stay in the list because their history stays in reports.
+  const buyerFilter = sp.buyer && user.role === "ADMIN" ? sp.buyer : undefined;
+  const scopedAccounts = await db.adAccount.findMany({
+    where:
+      user.role === "BUYER"
+        ? { ownerId: user.id }
+        : buyerFilter
+          ? { ownerId: buyerFilter }
+          : {},
+    select: { id: true, name: true, status: true },
+    orderBy: [{ status: "asc" }, { name: "asc" }],
+  });
+  const scopeIds = scopedAccounts.map((a) => a.id);
+
+  // Ad-account filter: only honoured when the account is inside the scope,
+  // so a buyer cannot reach someone else's account via the URL.
+  const account = sp.account && scopeIds.includes(sp.account) ? sp.account : "";
+
   let accountIds: string[] | null = null;
-  if (user.role === "BUYER") {
-    const accs = await db.adAccount.findMany({
-      where: { ownerId: user.id },
-      select: { id: true },
-    });
-    accountIds = accs.map((a) => a.id);
-  } else if (sp.buyer) {
-    const accs = await db.adAccount.findMany({
-      where: { ownerId: sp.buyer },
-      select: { id: true },
-    });
-    accountIds = accs.map((a) => a.id);
-  }
+  if (account) accountIds = [account];
+  else if (user.role === "BUYER" || buyerFilter) accountIds = scopeIds;
 
   const [stats, buyers] = await Promise.all([
     queryStats({ from, to, groupBy, accountIds }),
@@ -73,7 +80,13 @@ export default async function DashboardPage({
         to={to}
         groupBy={groupBy}
         buyers={buyers}
-        buyer={user.role === "ADMIN" ? sp.buyer ?? "" : undefined}
+        buyer={user.role === "ADMIN" ? buyerFilter ?? "" : undefined}
+        accounts={scopedAccounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          retired: a.status === "RETIRED",
+        }))}
+        account={account}
         today={today}
       />
 
