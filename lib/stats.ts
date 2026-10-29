@@ -1,0 +1,257 @@
+import { db } from "./db";
+import {
+  computeMetrics,
+  emptyTotals,
+  MetricRow,
+  RawTotals,
+} from "./metrics";
+
+export type GroupBy = "buyer" | "account" | "campaign" | "adset" | "ad" | "date";
+
+export type StatsQuery = {
+  from: string;
+  to: string;
+  groupBy: GroupBy;
+  /** restrict to these adAccount ids (buyer scope / admin filter); null = all */
+  accountIds: string[] | null;
+};
+
+export type StatsResult = {
+  rows: MetricRow[];
+  totals: MetricRow;
+  /** EF revenue in range whose sub4 (ad id) doesn't match any known Meta ad */
+  unmatchedRevenue: number;
+  unmatchedConversions: number;
+  /** daily matched series for the trend chart */
+  daily: Array<{ date: string; spend: number; revenue: number; profit: number }>;
+};
+
+type AdContext = {
+  accountId: string;
+  accountName: string;
+  ownerId: string | null;
+  ownerName: string;
+  campaignId: string;
+  campaignName: string;
+  adsetId: string;
+  adsetName: string;
+  adId: string;
+  adName: string;
+};
+
+/**
+ * Map every ad we've EVER seen on Meta to its context, using the most recent
+ * names. Built from all MetaStat rows (not range-limited) because an Everflow
+ * conversion can land days after the ad last spent.
+ */
+async function buildAdContextMap(
+  accountIds: string[] | null
+): Promise<Map<string, AdContext>> {
+  const ads = await db.metaStat.findMany({
+    where: accountIds ? { adAccountId: { in: accountIds } } : undefined,
+    orderBy: { date: "desc" },
+    distinct: ["adId"],
+    select: {
+      adId: true,
+      adName: true,
+      adsetId: true,
+      adsetName: true,
+      campaignId: true,
+      campaignName: true,
+      adAccountId: true,
+      adAccount: {
+        select: {
+          name: true,
+          ownerId: true,
+          owner: { select: { name: true } },
+        },
+      },
+    },
+  });
+  const map = new Map<string, AdContext>();
+  for (const a of ads) {
+    map.set(a.adId, {
+      accountId: a.adAccountId,
+      accountName: a.adAccount.name,
+      ownerId: a.adAccount.ownerId,
+      ownerName: a.adAccount.owner?.name ?? "Unassigned",
+      campaignId: a.campaignId,
+      campaignName: a.campaignName,
+      adsetId: a.adsetId,
+      adsetName: a.adsetName,
+      adId: a.adId,
+      adName: a.adName,
+    });
+  }
+  return map;
+}
+
+function groupKeyOf(ctx: AdContext, date: string, groupBy: GroupBy): [string, string, string?] {
+  switch (groupBy) {
+    case "buyer":
+      return [ctx.ownerId ?? "unassigned", ctx.ownerName];
+    case "account":
+      return [ctx.accountId, ctx.accountName];
+    case "campaign":
+      return [ctx.campaignId, ctx.campaignName, ctx.accountName];
+    case "adset":
+      return [ctx.adsetId, ctx.adsetName, ctx.campaignName];
+    case "ad":
+      return [ctx.adId, ctx.adName, `${ctx.campaignName} › ${ctx.adsetName}`];
+    case "date":
+      return [date, date];
+  }
+}
+
+export async function queryStats(q: StatsQuery): Promise<StatsResult> {
+  const where = {
+    date: { gte: q.from, lte: q.to },
+    ...(q.accountIds ? { adAccountId: { in: q.accountIds } } : {}),
+  };
+
+  const [metaRows, adMap] = await Promise.all([
+    db.metaStat.findMany({
+      where,
+      select: {
+        date: true,
+        adId: true,
+        spend: true,
+        impressions: true,
+        clicks: true,
+      },
+    }),
+    buildAdContextMap(q.accountIds),
+  ]);
+
+  const efRows = await db.everflowStat.findMany({
+    where: { date: { gte: q.from, lte: q.to } },
+    select: {
+      date: true,
+      adId: true,
+      clicks: true,
+      conversions: true,
+      revenue: true,
+    },
+  });
+
+  const groups = new Map<
+    string,
+    { label: string; sublabel?: string; t: RawTotals }
+  >();
+  const totals = emptyTotals();
+  const daily = new Map<
+    string,
+    { spend: number; revenue: number }
+  >();
+  const day = (d: string) => {
+    let e = daily.get(d);
+    if (!e) {
+      e = { spend: 0, revenue: 0 };
+      daily.set(d, e);
+    }
+    return e;
+  };
+  const group = (key: string, label: string, sublabel?: string) => {
+    let g = groups.get(key);
+    if (!g) {
+      g = { label, sublabel, t: emptyTotals() };
+      groups.set(key, g);
+    }
+    return g;
+  };
+
+  // Spend side
+  for (const r of metaRows) {
+    const ctx = adMap.get(r.adId);
+    if (!ctx) continue; // shouldn't happen: map built from same table
+    const [key, label, sublabel] = groupKeyOf(ctx, r.date, q.groupBy);
+    const g = group(key, label, sublabel);
+    g.t.spend += r.spend;
+    g.t.impressions += r.impressions;
+    g.t.metaClicks += r.clicks;
+    totals.spend += r.spend;
+    totals.impressions += r.impressions;
+    totals.metaClicks += r.clicks;
+    day(r.date).spend += r.spend;
+  }
+
+  // Revenue side — matched strictly on sub4 = ad id
+  let unmatchedRevenue = 0;
+  let unmatchedConversions = 0;
+  for (const r of efRows) {
+    const ctx = r.adId ? adMap.get(r.adId) : undefined;
+    if (!ctx) {
+      // Either truly broken subids, or an ad belonging to accounts outside
+      // the caller's scope. Only count it as unmatched for unscoped queries.
+      if (!q.accountIds) {
+        unmatchedRevenue += r.revenue;
+        unmatchedConversions += r.conversions;
+      }
+      continue;
+    }
+    const [key, label, sublabel] = groupKeyOf(ctx, r.date, q.groupBy);
+    const g = group(key, label, sublabel);
+    g.t.efClicks += r.clicks;
+    g.t.conversions += r.conversions;
+    g.t.revenue += r.revenue;
+    totals.efClicks += r.clicks;
+    totals.conversions += r.conversions;
+    totals.revenue += r.revenue;
+    day(r.date).revenue += r.revenue;
+  }
+
+  const rows = [...groups.entries()]
+    .map(([key, g]) => computeMetrics(key, g.label, g.t, g.sublabel))
+    .sort((a, b) =>
+      q.groupBy === "date" ? a.key.localeCompare(b.key) : b.spend - a.spend
+    );
+
+  const dailySeries = [...daily.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, v]) => ({
+      date,
+      spend: v.spend,
+      revenue: v.revenue,
+      profit: v.revenue - v.spend,
+    }));
+
+  return {
+    rows,
+    totals: computeMetrics("__totals__", "Total", totals),
+    unmatchedRevenue,
+    unmatchedConversions,
+    daily: dailySeries,
+  };
+}
+
+/** Rows for the Unmatched Revenue page: EF stats whose ad id is unknown. */
+export async function queryUnmatched(from: string, to: string) {
+  const [efRows, knownAds, instances, accounts] = await Promise.all([
+    db.everflowStat.findMany({
+      where: { date: { gte: from, lte: to } },
+      orderBy: [{ date: "desc" }, { revenue: "desc" }],
+    }),
+    db.metaStat.findMany({ distinct: ["adId"], select: { adId: true } }),
+    db.everflowInstance.findMany({ select: { id: true, name: true } }),
+    db.adAccount.findMany({ select: { metaAccountId: true, name: true } }),
+  ]);
+  const known = new Set(knownAds.map((a) => a.adId));
+  const instName = new Map(instances.map((i) => [i.id, i.name]));
+  // source_id carries the meta ad account id — fallback attribution when the
+  // sub macros are broken but the link's source_id survived.
+  const accName = new Map(accounts.map((a) => [a.metaAccountId, a.name]));
+  return efRows
+    .filter((r) => !r.adId || !known.has(r.adId))
+    .map((r) => ({
+      date: r.date,
+      instance: instName.get(r.instanceId) ?? r.instanceId,
+      sub1: r.campaignId,
+      sub3: r.adsetId,
+      sub4: r.adId,
+      sourceAccount: r.sourceId ? (accName.get(r.sourceId) ?? r.sourceId) : "",
+      offer: r.offerName || r.offerId,
+      clicks: r.clicks,
+      conversions: r.conversions,
+      revenue: r.revenue,
+    }));
+}

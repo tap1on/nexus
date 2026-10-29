@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Internal, auth-gated dashboard: every page reads the session cookie and
+  // live DB data, so component caching/prerendering buys nothing here.
+  cacheComponents: false,
   turbopack: {
     rules: {
       "*.css": {

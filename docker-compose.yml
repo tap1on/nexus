@@ -1,0 +1,24 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    volumes:
+      - nexus-data:/app/prisma/data
+    # db push creates/updates the schema on first boot and after upgrades
+    command: sh -c "npx prisma db push --skip-generate && npm run start"
+
+  worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - nexus-data:/app/prisma/data
+    command: npm run worker
+    depends_on:
+      - web
+
+volumes:
+  nexus-data:
