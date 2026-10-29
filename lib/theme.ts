@@ -4,7 +4,9 @@
 export const THEME_COOKIE = "nexus_theme";
 
 export const THEMES = [
-  { id: "nexus", label: "Nexus (Protoss)" },
+  { id: "nexus", label: "Protoss (Nexus)" },
+  { id: "terran", label: "Terran" },
+  { id: "zerg", label: "Zerg" },
   { id: "clean", label: "Clean (dark)" },
 ] as const;
 

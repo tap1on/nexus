@@ -207,6 +207,188 @@ h1, h2, h3, .font-display {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   Theme: "terran" — gunmetal steel, orange hazard accents, holo-blue data.
+   Same fonts and layout as Protoss; panels get a top stripe instead of
+   corner brackets.
+   ══════════════════════════════════════════════════════════════════════ */
+html[data-theme="terran"] {
+  --bg: #0e1114;
+  --surface: #161b20;
+  --surface-2: #1b2127;
+  --surface-3: #222a32;
+  --border: #2d3842;
+  --border-gold: rgba(240, 150, 46, 0.45);
+
+  --ink: #d9dfe6;
+  --ink-2: #97a4b1;
+  --ink-3: #65727f;
+
+  --gold: #f0962e; /* hazard orange */
+  --gold-deep: #c2731a;
+  --psi: #5fb8ff; /* holo blue */
+  --psi-deep: #2f8fd6;
+
+  --series-spend: #f0962e;
+  --series-revenue: #5fb8ff;
+  --chart-grid: rgba(95, 120, 140, 0.3);
+  --chart-cursor: rgba(95, 184, 255, 0.35);
+
+  --good: #45c26a;
+  --bad: #ff5d5d;
+  --warn: #f0b429;
+}
+html[data-theme="terran"] body {
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(240, 150, 46, 0.07), transparent 60%),
+    radial-gradient(900px 420px at -10% 110%, rgba(95, 184, 255, 0.06), transparent 60%);
+}
+html[data-theme="terran"] .panel {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+html[data-theme="terran"] .panel::before {
+  top: 0;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: 2px;
+  border: none;
+  background: linear-gradient(90deg, var(--gold), rgba(240, 150, 46, 0.1) 60%, transparent);
+}
+html[data-theme="terran"] .panel::after {
+  display: none;
+}
+html[data-theme="terran"] .khala-rule {
+  background: linear-gradient(90deg, var(--gold), rgba(95, 184, 255, 0.35), transparent);
+}
+html[data-theme="terran"] .btn {
+  border-color: rgba(240, 150, 46, 0.5);
+  background: linear-gradient(180deg, rgba(240, 150, 46, 0.16), rgba(240, 150, 46, 0.05));
+}
+html[data-theme="terran"] .btn:hover {
+  background: rgba(240, 150, 46, 0.25);
+  box-shadow: 0 0 14px rgba(240, 150, 46, 0.25);
+}
+html[data-theme="terran"] .btn-psi {
+  border-color: rgba(95, 184, 255, 0.55);
+  background: linear-gradient(180deg, rgba(95, 184, 255, 0.16), rgba(95, 184, 255, 0.05));
+}
+html[data-theme="terran"] .btn-psi:hover {
+  background: rgba(95, 184, 255, 0.25);
+  box-shadow: 0 0 14px rgba(95, 184, 255, 0.25);
+}
+html[data-theme="terran"] .input:focus,
+html[data-theme="terran"] .select:focus {
+  box-shadow: 0 0 0 1px rgba(95, 184, 255, 0.4);
+}
+html[data-theme="terran"] .nav-link:hover {
+  background: rgba(95, 184, 255, 0.05);
+}
+html[data-theme="terran"] .nav-link.active {
+  background: linear-gradient(90deg, rgba(95, 184, 255, 0.12), transparent);
+}
+html[data-theme="terran"] .data-table tbody tr:hover {
+  background: rgba(95, 184, 255, 0.04);
+}
+html[data-theme="terran"] .data-table tr.totals td {
+  background: rgba(240, 150, 46, 0.06);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Theme: "zerg" — creep purple, acid-green data, organic rounded panels.
+   ══════════════════════════════════════════════════════════════════════ */
+html[data-theme="zerg"] {
+  --bg: #0c0810;
+  --surface: #160f1c;
+  --surface-2: #1c1324;
+  --surface-3: #26192f;
+  --border: #392847;
+  --border-gold: rgba(196, 92, 255, 0.45);
+
+  --ink: #e6dcee;
+  --ink-2: #a995b8;
+  --ink-3: #715e82;
+
+  --gold: #c45cff; /* hive purple */
+  --gold-deep: #9a3fd6;
+  --psi: #a3f542; /* acid green */
+  --psi-deep: #6fc21c;
+
+  --series-spend: #c45cff;
+  --series-revenue: #a3f542;
+  --chart-grid: rgba(122, 63, 160, 0.3);
+  --chart-cursor: rgba(163, 245, 66, 0.35);
+
+  --good: #8ef05a;
+  --bad: #ff4f6d;
+  --warn: #ffb347;
+}
+html[data-theme="zerg"] body {
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(196, 92, 255, 0.1), transparent 60%),
+    radial-gradient(900px 420px at -10% 110%, rgba(163, 245, 66, 0.05), transparent 60%);
+}
+html[data-theme="zerg"] .panel {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(196, 92, 255, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+html[data-theme="zerg"] .panel::before,
+html[data-theme="zerg"] .panel::after {
+  display: none;
+}
+html[data-theme="zerg"] .khala-rule {
+  background: linear-gradient(90deg, var(--gold), rgba(163, 245, 66, 0.35), transparent);
+}
+html[data-theme="zerg"] .input,
+html[data-theme="zerg"] .select {
+  border-radius: 8px;
+}
+html[data-theme="zerg"] .input:focus,
+html[data-theme="zerg"] .select:focus {
+  border-color: var(--gold-deep);
+  box-shadow: 0 0 0 1px rgba(196, 92, 255, 0.4);
+}
+html[data-theme="zerg"] .btn {
+  border-radius: 999px;
+  border-color: rgba(196, 92, 255, 0.5);
+  background: linear-gradient(180deg, rgba(196, 92, 255, 0.16), rgba(196, 92, 255, 0.05));
+}
+html[data-theme="zerg"] .btn:hover {
+  background: rgba(196, 92, 255, 0.25);
+  box-shadow: 0 0 14px rgba(196, 92, 255, 0.3);
+}
+html[data-theme="zerg"] .btn-psi {
+  border-color: rgba(163, 245, 66, 0.5);
+  background: linear-gradient(180deg, rgba(163, 245, 66, 0.14), rgba(163, 245, 66, 0.04));
+}
+html[data-theme="zerg"] .btn-psi:hover {
+  background: rgba(163, 245, 66, 0.22);
+  box-shadow: 0 0 14px rgba(163, 245, 66, 0.25);
+}
+html[data-theme="zerg"] .btn-danger {
+  background: rgba(255, 79, 109, 0.08);
+  border-color: rgba(255, 79, 109, 0.5);
+}
+html[data-theme="zerg"] .nav-link {
+  margin: 1px 0.5rem;
+  border-left: none;
+  border-radius: 8px;
+}
+html[data-theme="zerg"] .nav-link:hover {
+  background: rgba(196, 92, 255, 0.07);
+}
+html[data-theme="zerg"] .nav-link.active {
+  background: rgba(196, 92, 255, 0.14);
+}
+html[data-theme="zerg"] .data-table tbody tr:hover {
+  background: rgba(196, 92, 255, 0.05);
+}
+html[data-theme="zerg"] .data-table tr.totals td {
+  background: rgba(196, 92, 255, 0.07);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    Theme: "clean" — flat, neutral dark, Keitaro-style admin look.
    Selected via <html data-theme="clean"> (see lib/theme.ts). Everything
    below only re-skins; layout and markup are shared with the Nexus theme.
