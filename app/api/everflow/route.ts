@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { adminRoute } from "@/lib/api";
 import { fetchTimezones } from "@/lib/everflow";
+import { syncSingleEverflowInstance } from "@/lib/sync";
 
 const CreateInstance = z.object({
   name: z.string().min(1),
@@ -35,6 +36,11 @@ export async function POST(req: Request) {
     const inst = await db.everflowInstance.create({
       data: { ...body.data, timezoneId },
     });
+    // Backfill 30 days of revenue immediately (visible on Sync Status).
+    syncSingleEverflowInstance(
+      inst.id,
+      parseInt(process.env.DEEP_LOOKBACK_DAYS || "30", 10)
+    ).catch((e) => console.error("[instance backfill]", e));
     return NextResponse.json({ id: inst.id, timezoneId });
   });
 }

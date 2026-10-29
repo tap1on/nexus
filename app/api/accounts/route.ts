@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { adminRoute } from "@/lib/api";
+import { syncSingleMetaAccount } from "@/lib/sync";
 
 const CreateAccount = z.object({
   bmId: z.string().min(1),
@@ -33,6 +34,12 @@ export async function POST(req: Request) {
     const acc = await db.adAccount.create({
       data: { ...body.data, ownerId: body.data.ownerId || null },
     });
+    // Backfill 30 days right away instead of waiting for the next worker
+    // tick; progress and errors land on the Sync Status page.
+    syncSingleMetaAccount(
+      acc.id,
+      parseInt(process.env.DEEP_LOOKBACK_DAYS || "30", 10)
+    ).catch((e) => console.error("[account backfill]", e));
     return NextResponse.json({ id: acc.id });
   });
 }
