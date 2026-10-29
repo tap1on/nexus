@@ -14,6 +14,9 @@ export type StatsQuery = {
   groupBy: GroupBy;
   /** restrict to these adAccount ids (buyer scope / admin filter); null = all */
   accountIds: string[] | null;
+  /** drill-down filters (Meta campaign / adset ids) */
+  campaignId?: string;
+  adsetId?: string;
 };
 
 export type StatsResult = {
@@ -107,7 +110,14 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
   const where = {
     date: { gte: q.from, lte: q.to },
     ...(q.accountIds ? { adAccountId: { in: q.accountIds } } : {}),
+    ...(q.campaignId ? { campaignId: q.campaignId } : {}),
+    ...(q.adsetId ? { adsetId: q.adsetId } : {}),
   };
+  // Any narrowing means "unmatched" can't be judged from this query alone.
+  const scoped = Boolean(q.accountIds || q.campaignId || q.adsetId);
+  const inDrill = (ctx: AdContext) =>
+    (!q.campaignId || ctx.campaignId === q.campaignId) &&
+    (!q.adsetId || ctx.adsetId === q.adsetId);
 
   const [metaRows, adMap] = await Promise.all([
     db.metaStat.findMany({
@@ -136,8 +146,9 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
 
   const groups = new Map<
     string,
-    { label: string; sublabel?: string; t: RawTotals }
+    { label: string; sublabel?: string; ids?: MetricRow["ids"]; t: RawTotals }
   >();
+  const HIERARCHY: GroupBy[] = ["account", "campaign", "adset", "ad"];
   const totals = emptyTotals();
   const daily = new Map<
     string,
@@ -151,10 +162,18 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
     }
     return e;
   };
-  const group = (key: string, label: string, sublabel?: string) => {
+  const group = (ctx: AdContext, date: string) => {
+    const [key, label, sublabel] = groupKeyOf(ctx, date, q.groupBy);
     let g = groups.get(key);
     if (!g) {
-      g = { label, sublabel, t: emptyTotals() };
+      g = {
+        label,
+        sublabel,
+        ids: HIERARCHY.includes(q.groupBy)
+          ? { accountId: ctx.accountId, campaignId: ctx.campaignId, adsetId: ctx.adsetId }
+          : undefined,
+        t: emptyTotals(),
+      };
       groups.set(key, g);
     }
     return g;
@@ -164,8 +183,7 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
   for (const r of metaRows) {
     const ctx = adMap.get(r.adId);
     if (!ctx) continue; // shouldn't happen: map built from same table
-    const [key, label, sublabel] = groupKeyOf(ctx, r.date, q.groupBy);
-    const g = group(key, label, sublabel);
+    const g = group(ctx, r.date);
     g.t.spend += r.spend;
     g.t.impressions += r.impressions;
     g.t.metaClicks += r.clicks;
@@ -183,14 +201,14 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
     if (!ctx) {
       // Either truly broken subids, or an ad belonging to accounts outside
       // the caller's scope. Only count it as unmatched for unscoped queries.
-      if (!q.accountIds) {
+      if (!scoped) {
         unmatchedRevenue += r.revenue;
         unmatchedConversions += r.conversions;
       }
       continue;
     }
-    const [key, label, sublabel] = groupKeyOf(ctx, r.date, q.groupBy);
-    const g = group(key, label, sublabel);
+    if (!inDrill(ctx)) continue; // known ad, but outside the campaign/adset drill
+    const g = group(ctx, r.date);
     g.t.efClicks += r.clicks;
     g.t.conversions += r.conversions;
     g.t.revenue += r.revenue;
@@ -201,7 +219,7 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
   }
 
   const rows = [...groups.entries()]
-    .map(([key, g]) => computeMetrics(key, g.label, g.t, g.sublabel))
+    .map(([key, g]) => computeMetrics(key, g.label, g.t, g.sublabel, g.ids))
     .sort((a, b) =>
       q.groupBy === "date" ? a.key.localeCompare(b.key) : b.spend - a.spend
     );
@@ -222,6 +240,54 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
     unmatchedConversions,
     daily: dailySeries,
   };
+}
+
+/**
+ * Meta hierarchy lookups for the drill-down UI (dropdown options and
+ * breadcrumb names). Names come from the most recent MetaStat row, so a
+ * renamed campaign shows its current name. Not range-limited: a campaign
+ * that stopped spending should still be navigable.
+ */
+export async function listCampaigns(accountIds: string[]) {
+  const rows = await db.metaStat.findMany({
+    where: { adAccountId: { in: accountIds } },
+    orderBy: { date: "desc" },
+    distinct: ["campaignId"],
+    select: { campaignId: true, campaignName: true, adAccountId: true },
+  });
+  return rows
+    .map((r) => ({ id: r.campaignId, name: r.campaignName, accountId: r.adAccountId }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function listAdsets(accountIds: string[], campaignId: string) {
+  const rows = await db.metaStat.findMany({
+    where: { adAccountId: { in: accountIds }, campaignId },
+    orderBy: { date: "desc" },
+    distinct: ["adsetId"],
+    select: { adsetId: true, adsetName: true },
+  });
+  return rows
+    .map((r) => ({ id: r.adsetId, name: r.adsetName }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Resolve a campaign or adset id to its parent ids and current name, within scope. */
+export async function lookupNode(
+  accountIds: string[],
+  where: { campaignId: string } | { adsetId: string }
+) {
+  return db.metaStat.findFirst({
+    where: { adAccountId: { in: accountIds }, ...where },
+    orderBy: { date: "desc" },
+    select: {
+      adAccountId: true,
+      campaignId: true,
+      campaignName: true,
+      adsetId: true,
+      adsetName: true,
+    },
+  });
 }
 
 /** Rows for the Unmatched Revenue page: EF stats whose ad id is unknown. */

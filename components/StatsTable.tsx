@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { MetricRow } from "@/lib/metrics";
 import { fmtMoney, fmtNum, fmtPct, fmtSigned } from "@/lib/format";
 
@@ -28,6 +29,15 @@ const COLS: Array<{ key: ColKey; label: string; fmt: (r: MetricRow) => string }>
   { key: "epc", label: "EPC", fmt: (r) => fmtMoney(r.epc, 3) },
   { key: "cvr", label: "CVR", fmt: (r) => fmtPct(r.cvr, 2) },
 ];
+
+const GROUP_LABELS: Record<string, string> = {
+  buyer: "Buyer",
+  account: "Ad Account",
+  campaign: "Campaign",
+  adset: "Ad Set",
+  ad: "Ad",
+  date: "Day",
+};
 
 export function StatsTable({
   rows,
@@ -83,7 +93,7 @@ export function StatsTable({
         <thead>
           <tr>
             <th className={sortKey === "label" ? "sorted" : ""} onClick={() => clickSort("label")}>
-              {groupBy}{arrow("label")}
+              {GROUP_LABELS[groupBy] ?? groupBy}{arrow("label")}
             </th>
             {COLS.map((c) => (
               <th
@@ -100,7 +110,17 @@ export function StatsTable({
           {sorted.map((r) => (
             <tr key={r.key}>
               <td>
-                <span className="text-ink">{r.label}</span>
+                {r.href ? (
+                  <Link
+                    href={r.href}
+                    className="text-ink hover:text-psi hover:underline underline-offset-2"
+                    title="Drill down"
+                  >
+                    {r.label} <span className="text-ink-3 text-[0.72rem]">›</span>
+                  </Link>
+                ) : (
+                  <span className="text-ink">{r.label}</span>
+                )}
                 {r.sublabel && (
                   <span className="block text-[0.72rem] text-ink-3 max-w-72 truncate">
                     {r.sublabel}

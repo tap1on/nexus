@@ -2,6 +2,10 @@ export type MetricRow = {
   key: string;
   label: string;
   sublabel?: string;
+  /** Meta hierarchy ids for the row (set for account/campaign/adset/ad groups) */
+  ids?: { accountId: string; campaignId: string; adsetId: string };
+  /** drill-down target, filled in by the page */
+  href?: string;
   spend: number;
   revenue: number;
   profit: number;
@@ -43,13 +47,15 @@ export function computeMetrics(
   key: string,
   label: string,
   t: RawTotals,
-  sublabel?: string
+  sublabel?: string,
+  ids?: MetricRow["ids"]
 ): MetricRow {
   const profit = t.revenue - t.spend;
   return {
     key,
     label,
     sublabel,
+    ids,
     spend: t.spend,
     revenue: t.revenue,
     profit,
