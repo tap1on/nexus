@@ -2,7 +2,6 @@ import { AdAccount, BusinessManager, EverflowInstance } from "@prisma/client";
 import { db } from "./db";
 import { fetchAdInsights } from "./meta";
 import { fetchDailyEntityStats } from "./everflow";
-import { syncCreatives } from "./thumbs";
 import { todayBerlin, shiftDate, dateRange } from "./dates";
 
 const CHUNK = 200;
@@ -71,19 +70,9 @@ async function syncOneMetaAccount(
       );
       upserted += batch.length;
     });
-    // Creatives (thumbnails + post links) for ads not seen before. A failure
-    // here must not fail the spend sync; it's noted in the run message.
-    let message = "";
-    try {
-      const adIds = [...new Set(rows.map((r) => r.ad_id))];
-      const n = await syncCreatives(acc.bm.systemUserToken, adIds);
-      if (n > 0) message = `creatives: ${n} fetched`;
-    } catch (e) {
-      message = `creatives failed: ${e instanceof Error ? e.message : String(e)}`;
-    }
     await db.syncRun.update({
       where: { id: run.id },
-      data: { status: "OK", finishedAt: new Date(), rowsUpserted: upserted, message },
+      data: { status: "OK", finishedAt: new Date(), rowsUpserted: upserted },
     });
   } catch (e) {
     await db.syncRun.update({

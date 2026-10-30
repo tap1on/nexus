@@ -227,19 +227,6 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
       q.groupBy === "date" ? a.key.localeCompare(b.key) : b.spend - a.spend
     );
 
-  // Ad level: flag rows that have a creative thumbnail to show.
-  if (q.groupBy === "ad" && rows.length > 0) {
-    const creatives = await db.adCreative.findMany({
-      where: { adId: { in: rows.map((r) => r.key) } },
-      select: { adId: true, cachedAt: true, thumbnailUrl: true, imageUrl: true },
-    });
-    const byAd = new Map(creatives.map((c) => [c.adId, c]));
-    for (const r of rows) {
-      const c = byAd.get(r.key);
-      r.media = { thumb: Boolean(c && (c.cachedAt || c.thumbnailUrl || c.imageUrl)) };
-    }
-  }
-
   const dailySeries = [...daily.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, v]) => ({

@@ -50,9 +50,6 @@ export function StatsTable({
 }) {
   const [sortKey, setSortKey] = useState<ColKey | "label">("spend");
   const [desc, setDesc] = useState(true);
-  // Floating creative preview (position: fixed escapes the table's overflow clip).
-  const [preview, setPreview] = useState<{ key: string; x: number; y: number } | null>(null);
-  const [broken, setBroken] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => {
     const copy = [...rows];
@@ -114,23 +111,6 @@ export function StatsTable({
             <tr key={r.key}>
               <td>
                 <span className="flex items-center gap-2 min-w-0">
-                  {r.media?.thumb && !broken.has(r.key) && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/api/thumb/${r.key}`}
-                      alt=""
-                      loading="lazy"
-                      className="w-8 h-8 object-cover shrink-0 border border-edge cursor-zoom-in"
-                      onMouseEnter={(e) =>
-                        setPreview({ key: r.key, x: e.clientX, y: e.clientY })
-                      }
-                      onMouseMove={(e) =>
-                        setPreview({ key: r.key, x: e.clientX, y: e.clientY })
-                      }
-                      onMouseLeave={() => setPreview(null)}
-                      onError={() => setBroken((s) => new Set(s).add(r.key))}
-                    />
-                  )}
                   {r.href ? (
                     <Link
                       href={r.href}
@@ -174,25 +154,6 @@ export function StatsTable({
           </tr>
         </tbody>
       </table>
-      {preview && (
-        <div
-          className="panel p-1 pointer-events-none"
-          style={{
-            position: "fixed",
-            zIndex: 50,
-            // keep the preview inside the viewport: flip left/up near the edges
-            left: Math.min(preview.x + 16, window.innerWidth - 336),
-            top: Math.min(preview.y + 16, window.innerHeight - 336),
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`/api/thumb/${preview.key}`}
-            alt=""
-            className="block max-w-80 max-h-80 object-contain"
-          />
-        </div>
-      )}
     </div>
   );
 }

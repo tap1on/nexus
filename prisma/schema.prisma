@@ -114,19 +114,20 @@ model EverflowStat {
   @@index([campaignId])
 }
 
-// Creative info per Meta ad (thumbnail etc.). Thumbnail bytes are cached on
-// disk (see lib/thumbs.ts) because Meta's CDN URLs are signed and expire.
+// Unused since the ad-thumbnail feature was removed. The empty table is kept
+// so the boot-time `prisma db push` never needs a destructive change on
+// databases that already have it.
 model AdCreative {
   adId             String    @id
   creativeId       String    @default("")
-  thumbnailUrl     String    @default("") // signed Meta CDN URL (expires)
+  thumbnailUrl     String    @default("")
   imageUrl         String    @default("")
   videoId          String    @default("")
-  storyId          String    @default("") // effective_object_story_id = "<pageId>_<postId>"
+  storyId          String    @default("")
   instagramMediaId String    @default("")
-  postUrl          String    @default("") // unused; kept so `db push` on boot stays non-destructive
+  postUrl          String    @default("")
   fetchedAt        DateTime  @default(now())
-  cachedAt         DateTime? // when thumbnail bytes were written to the disk cache
+  cachedAt         DateTime?
 }
 
 model SyncRun {
