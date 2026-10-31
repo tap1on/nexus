@@ -1,7 +1,7 @@
 import { AdAccount, BusinessManager, EverflowInstance } from "@prisma/client";
 import { db } from "./db";
 import { fetchAdInsights } from "./meta";
-import { fetchDailyEntityStats } from "./everflow";
+import { fetchDailyEntityStats, fetchDailyEventStats } from "./everflow";
 import { todayBerlin, shiftDate, dateRange } from "./dates";
 
 const CHUNK = 200;
@@ -139,6 +139,42 @@ async function syncOneEverflowInstance(
                 conversions: r.conversions,
                 revenue: r.revenue,
               },
+            })
+          )
+        );
+        upserted += batch.length;
+      });
+
+      // Per-event breakdown for the Step 1 / Step 2 columns.
+      const eventRows = await fetchDailyEventStats(inst.apiKey, inst.timezoneId, date);
+      await chunked(eventRows, async (batch) => {
+        await db.$transaction(
+          batch.map((r) =>
+            db.everflowEventStat.upsert({
+              where: {
+                date_instanceId_campaignId_adsetId_adId_sourceId_offerId_event: {
+                  date,
+                  instanceId: inst.id,
+                  campaignId: r.campaignId,
+                  adsetId: r.adsetId,
+                  adId: r.adId,
+                  sourceId: r.sourceId,
+                  offerId: r.offerId,
+                  event: r.event,
+                },
+              },
+              create: {
+                date,
+                instanceId: inst.id,
+                campaignId: r.campaignId,
+                adsetId: r.adsetId,
+                adId: r.adId,
+                sourceId: r.sourceId,
+                offerId: r.offerId,
+                event: r.event,
+                count: r.count,
+              },
+              update: { count: r.count },
             })
           )
         );

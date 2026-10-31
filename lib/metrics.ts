@@ -17,6 +17,8 @@ export type MetricRow = {
   cpc: number | null;
   cpm: number | null;
   ctr: number | null; // percent
+  step1: number; // offer-mapped pre-sale events
+  step2: number;
   conversions: number;
   cpa: number | null;
   epc: number | null;
@@ -29,6 +31,8 @@ export type RawTotals = {
   impressions: number;
   metaClicks: number;
   efClicks: number;
+  step1: number;
+  step2: number;
   conversions: number;
 };
 
@@ -39,6 +43,8 @@ export function emptyTotals(): RawTotals {
     impressions: 0,
     metaClicks: 0,
     efClicks: 0,
+    step1: 0,
+    step2: 0,
     conversions: 0,
   };
 }
@@ -70,6 +76,8 @@ export function computeMetrics(
     cpc: t.metaClicks > 0 ? t.spend / t.metaClicks : null,
     cpm: t.impressions > 0 ? (t.spend / t.impressions) * 1000 : null,
     ctr: t.impressions > 0 ? (t.metaClicks / t.impressions) * 100 : null,
+    step1: t.step1,
+    step2: t.step2,
     conversions: t.conversions,
     cpa: t.conversions > 0 ? t.spend / t.conversions : null,
     epc: t.efClicks > 0 ? t.revenue / t.efClicks : null,

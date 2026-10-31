@@ -49,8 +49,9 @@ model EverflowInstance {
   timezoneId Int            @default(56) // Europe/Berlin (see GET /v1/meta/timezones)
   status     String         @default("ACTIVE") // ACTIVE | RETIRED
   createdAt  DateTime       @default(now())
-  efStats    EverflowStat[]
-  offers     Offer[]
+  efStats      EverflowStat[]
+  efEventStats EverflowEventStat[]
+  offers       Offer[]
 }
 
 // Offers buyers can generate tracking links for.
@@ -62,6 +63,10 @@ model Offer {
   name           String
   trackingUrl    String // base tracking URL; subids + source_id are appended on generation
   status         String           @default("ACTIVE") // ACTIVE | ARCHIVED
+  // Everflow event names mapped to the dashboard's Step 1 / Step 2 columns
+  // (pre-sale funnel events); "" = not mapped.
+  step1Event     String           @default("")
+  step2Event     String           @default("")
   createdAt      DateTime         @default(now())
 
   @@unique([instanceId, networkOfferId])
@@ -112,6 +117,28 @@ model EverflowStat {
   @@index([date])
   @@index([adId])
   @@index([campaignId])
+}
+
+// Per-event conversion counts: same entity report additionally grouped by
+// event_name. Powers the per-offer Step 1 / Step 2 columns (Offer.step1Event /
+// step2Event). Kept separate from EverflowStat so its totals stay untouched.
+model EverflowEventStat {
+  id         String           @id @default(cuid())
+  date       String // YYYY-MM-DD in instance reporting timezone (Berlin)
+  instanceId String
+  instance   EverflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  campaignId String           @default("") // sub1 = {{campaign.id}}
+  adsetId    String           @default("") // sub3 = {{adset.id}}
+  adId       String           @default("") // sub4 = {{ad.id}}
+  sourceId   String           @default("") // source_id = meta ad account id
+  offerId    String           @default("")
+  event      String           @default("") // event_name as Everflow reports it
+  count      Int              @default(0) // cv + event metric for the row
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([date, instanceId, campaignId, adsetId, adId, sourceId, offerId, event])
+  @@index([date])
+  @@index([adId])
 }
 
 // Unused since the ad-thumbnail feature was removed. The empty table is kept

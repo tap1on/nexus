@@ -102,6 +102,18 @@ with row counts and errors. Admins can trigger a manual **Sync Now**.
 - Numbers for recent days keep moving between syncs (Meta restates spend, EF
   conversions keep arriving); yesterday is final after the nightly deep pass.
 
+## 5b. Step 1 / Step 2 events
+
+- Some offers fire conversion events before the base Sale (e.g. a lead form,
+  then a signup). The sync pulls a second entity report per day grouped by
+  `event_name` into `EverflowEventStat`.
+- On Admin → Everflow, each API-linked offer has Step 1 / Step 2 dropdowns
+  listing the event names seen in synced data (or a custom name). Mapped
+  events show as "Step 1" / "Step 2" columns on the dashboard, left of Conv,
+  joined to ads via sub4 like revenue. Unmapped events are stored but not shown.
+- Manual offers (no Everflow offer id) can't be mapped — reporting rows are
+  keyed by the network offer id.
+
 ## 6. Scheduled jobs / limits
 
 - Meta: one insights request per ad account per pass (paginated). ~15 accounts

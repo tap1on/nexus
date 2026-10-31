@@ -7,7 +7,7 @@ import { OffersPanel } from "@/components/admin/OffersPanel";
 export default async function EverflowPage() {
   const user = await getSessionUser();
   if (!user || user.role !== "ADMIN") redirect("/");
-  const [instances, offers] = await Promise.all([
+  const [instances, offers, eventRows] = await Promise.all([
     db.everflowInstance.findMany({
       orderBy: [{ status: "asc" }, { name: "asc" }],
     }),
@@ -15,7 +15,18 @@ export default async function EverflowPage() {
       orderBy: [{ status: "asc" }, { name: "asc" }],
       include: { instance: { select: { name: true } } },
     }),
+    // Event names actually seen in synced data, per instance+offer — these
+    // feed the Step 1 / Step 2 dropdowns.
+    db.everflowEventStat.findMany({
+      distinct: ["instanceId", "offerId", "event"],
+      select: { instanceId: true, offerId: true, event: true },
+    }),
   ]);
+  const eventOptions: Record<string, string[]> = {};
+  for (const r of eventRows) {
+    const key = `${r.instanceId}:${r.offerId}`;
+    (eventOptions[key] ??= []).push(r.event);
+  }
   return (
     <div className="space-y-8">
       <EverflowManager
@@ -38,6 +49,9 @@ export default async function EverflowPage() {
           networkOfferId: o.networkOfferId,
           trackingUrl: o.trackingUrl,
           status: o.status,
+          step1Event: o.step1Event,
+          step2Event: o.step2Event,
+          events: eventOptions[`${o.instanceId}:${o.networkOfferId}`] ?? [],
         }))}
       />
     </div>

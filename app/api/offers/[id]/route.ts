@@ -7,6 +7,9 @@ const PatchOffer = z.object({
   name: z.string().min(1).optional(),
   trackingUrl: z.string().url().optional(),
   status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
+  // Everflow event names for the Step 1 / Step 2 columns; "" clears a mapping
+  step1Event: z.string().max(200).optional(),
+  step2Event: z.string().max(200).optional(),
 });
 
 export async function PATCH(

@@ -10,7 +10,47 @@ type OfferRow = {
   networkOfferId: string | null;
   trackingUrl: string;
   status: string;
+  step1Event: string;
+  step2Event: string;
+  /** event names seen in synced reporting data for this offer */
+  events: string[];
 };
+
+function StepSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  const opts = [...new Set([...options, ...(value ? [value] : [])])].sort();
+  return (
+    <select
+      className="select text-xs"
+      value={value}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (v === "__custom__") {
+          const name = prompt(
+            "Everflow event name (exactly as it appears in reporting):",
+            value
+          );
+          if (name !== null) onChange(name.trim());
+        } else {
+          onChange(v);
+        }
+      }}
+    >
+      <option value="">—</option>
+      {opts.map((o) => (
+        <option key={o} value={o}>{o}</option>
+      ))}
+      <option value="__custom__">Custom…</option>
+    </select>
+  );
+}
 
 type Runnable = {
   networkOfferId: string;
@@ -95,7 +135,11 @@ export function OffersPanel({
         <p className="text-ink-3 text-sm">
           Offers power the buyers&apos; Link Generator. Pull them from the Everflow
           API, or add one manually with a pasted tracking URL. Subids and
-          source_id are appended automatically at generation time.
+          source_id are appended automatically at generation time. Map an
+          offer&apos;s funnel events to Step 1 / Step 2 below and they show as
+          columns on the dashboard, next to Conv. The dropdowns list event
+          names seen in synced data — after the first sync with conversions,
+          every event the offer fires appears here.
         </p>
       </div>
 
@@ -201,13 +245,15 @@ export function OffersPanel({
               <th style={{ textAlign: "left" }}>Network</th>
               <th style={{ textAlign: "left" }}>EF Offer ID</th>
               <th style={{ textAlign: "left" }}>Tracking URL</th>
+              <th style={{ textAlign: "left" }}>Step 1 Event</th>
+              <th style={{ textAlign: "left" }}>Step 2 Event</th>
               <th style={{ textAlign: "left" }}>Status</th>
               <th style={{ textAlign: "left" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {offers.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: "left" }} className="text-ink-3">
+              <tr><td colSpan={8} style={{ textAlign: "left" }} className="text-ink-3">
                 No offers yet — fetch or add some above.
               </td></tr>
             )}
@@ -221,6 +267,30 @@ export function OffersPanel({
                 <td style={{ textAlign: "left" }} className="max-w-72 truncate text-ink-3" title={o.trackingUrl}>
                   {o.trackingUrl}
                 </td>
+                {o.networkOfferId ? (
+                  <>
+                    <td style={{ textAlign: "left" }}>
+                      <StepSelect
+                        value={o.step1Event}
+                        options={o.events}
+                        onChange={(v) => patch(o.id, { step1Event: v })}
+                      />
+                    </td>
+                    <td style={{ textAlign: "left" }}>
+                      <StepSelect
+                        value={o.step2Event}
+                        options={o.events}
+                        onChange={(v) => patch(o.id, { step2Event: v })}
+                      />
+                    </td>
+                  </>
+                ) : (
+                  <td colSpan={2} style={{ textAlign: "left" }}
+                    className="text-ink-3 text-xs"
+                    title="Step mapping needs the Everflow offer id — re-add this offer via Fetch Runnable Offers">
+                    needs EF offer id
+                  </td>
+                )}
                 <td style={{ textAlign: "left" }}
                   className={o.status === "ACTIVE" ? "text-good" : "text-ink-3"}>
                   {o.status === "ACTIVE" ? "✓ Active" : "✕ Archived"}

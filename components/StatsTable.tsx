@@ -8,8 +8,8 @@ import { fmtMoney, fmtNum, fmtPct, fmtSigned } from "@/lib/format";
 type ColKey = keyof Pick<
   MetricRow,
   | "spend" | "revenue" | "profit" | "roi" | "impressions" | "metaClicks"
-  | "efClicks" | "clickLoss" | "cpc" | "cpm" | "ctr" | "conversions"
-  | "cpa" | "epc" | "cvr"
+  | "efClicks" | "clickLoss" | "cpc" | "cpm" | "ctr" | "step1" | "step2"
+  | "conversions" | "cpa" | "epc" | "cvr"
 >;
 
 const COLS: Array<{ key: ColKey; label: string; fmt: (r: MetricRow) => string }> = [
@@ -24,6 +24,8 @@ const COLS: Array<{ key: ColKey; label: string; fmt: (r: MetricRow) => string }>
   { key: "cpc", label: "CPC", fmt: (r) => fmtMoney(r.cpc, 3) },
   { key: "cpm", label: "CPM", fmt: (r) => fmtMoney(r.cpm) },
   { key: "ctr", label: "CTR", fmt: (r) => fmtPct(r.ctr, 2) },
+  { key: "step1", label: "Step 1", fmt: (r) => fmtNum(r.step1) },
+  { key: "step2", label: "Step 2", fmt: (r) => fmtNum(r.step2) },
   { key: "conversions", label: "Conv", fmt: (r) => fmtNum(r.conversions) },
   { key: "cpa", label: "CPA", fmt: (r) => fmtMoney(r.cpa) },
   { key: "epc", label: "EPC", fmt: (r) => fmtMoney(r.epc, 3) },

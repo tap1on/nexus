@@ -20,10 +20,27 @@ type EfTableResponse = {
     reporting: {
       total_click?: number;
       cv?: number;
+      event?: number; // post-conversion event count
       revenue?: number;
     };
   }>;
 };
+
+function parseColumns(
+  entry: NonNullable<EfTableResponse["table"]>[number]
+): {
+  cols: Record<string, { id?: string; label?: string }>;
+  pick: (t: string) => string;
+} {
+  const cols: Record<string, { id?: string; label?: string }> = {};
+  for (const c of entry.columns || []) cols[c.column_type] = c;
+  const pick = (t: string) => {
+    const c = cols[t];
+    const v = (c?.label ?? c?.id ?? "").trim();
+    return v === "null" || v === "undefined" ? "" : v;
+  };
+  return { cols, pick };
+}
 
 class EverflowApiError extends Error {}
 
@@ -81,13 +98,7 @@ export async function fetchDailyEntityStats(
   );
   const rows: EfEntityRow[] = [];
   for (const entry of json.table || []) {
-    const cols: Record<string, { id?: string; label?: string }> = {};
-    for (const c of entry.columns || []) cols[c.column_type] = c;
-    const pick = (t: string) => {
-      const c = cols[t];
-      const v = (c?.label ?? c?.id ?? "").trim();
-      return v === "null" || v === "undefined" ? "" : v;
-    };
+    const { cols, pick } = parseColumns(entry);
     rows.push({
       campaignId: pick("sub1"),
       adsetId: pick("sub3"),
@@ -98,6 +109,68 @@ export async function fetchDailyEntityStats(
       clicks: entry.reporting?.total_click ?? 0,
       conversions: entry.reporting?.cv ?? 0,
       revenue: entry.reporting?.revenue ?? 0,
+    });
+  }
+  return rows;
+}
+
+export type EfEventRow = {
+  campaignId: string;
+  adsetId: string;
+  adId: string;
+  sourceId: string;
+  offerId: string;
+  event: string; // event_name (base conversions report under their own name too)
+  count: number;
+};
+
+/**
+ * The same entity report additionally grouped by event_name: how often each
+ * conversion event fired per subid/offer combination. A separate request so
+ * fetchDailyEntityStats keeps its exact totals (clicks/payout attribution
+ * across event rows is Everflow's business, not ours).
+ */
+export async function fetchDailyEventStats(
+  apiKey: string,
+  timezoneId: number,
+  date: string
+): Promise<EfEventRow[]> {
+  const body = {
+    from: date,
+    to: date,
+    timezone_id: timezoneId,
+    currency_id: "USD",
+    columns: [
+      { column: "sub1" },
+      { column: "sub3" },
+      { column: "sub4" },
+      { column: "source_id" },
+      { column: "offer" },
+      { column: "event_name" },
+    ],
+    query: { filters: [] },
+  };
+  const json = await efPost<EfTableResponse>(
+    apiKey,
+    "/reporting/entity/table",
+    body
+  );
+  const rows: EfEventRow[] = [];
+  for (const entry of json.table || []) {
+    const { cols, pick } = parseColumns(entry);
+    const event = pick("event_name");
+    // The count lives in `cv` for base conversions and `event` for
+    // post-conversion events; exactly one is non-zero per row.
+    const count = (entry.reporting?.cv ?? 0) + (entry.reporting?.event ?? 0);
+    if (!event || count === 0) continue;
+    rows.push({
+      campaignId: pick("sub1"),
+      adsetId: pick("sub3"),
+      adId: pick("sub4"),
+      sourceId: pick("source_id"),
+      offerId: (cols["offer"]?.id ?? "").trim(),
+      event,
+      count,
     });
   }
   return rows;

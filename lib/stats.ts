@@ -147,6 +147,27 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
     },
   });
 
+  // Offers with a Step 1 / Step 2 event mapping, keyed instanceId:offerId.
+  const mappedOffers = await db.offer.findMany({
+    where: {
+      networkOfferId: { not: null },
+      OR: [{ step1Event: { not: "" } }, { step2Event: { not: "" } }],
+    },
+    select: { instanceId: true, networkOfferId: true, step1Event: true, step2Event: true },
+  });
+  const stepMap = new Map(
+    mappedOffers.map((o) => [
+      `${o.instanceId}:${o.networkOfferId}`,
+      { step1: o.step1Event, step2: o.step2Event },
+    ])
+  );
+  const eventRows = stepMap.size
+    ? await db.everflowEventStat.findMany({
+        where: { date: { gte: q.from, lte: q.to } },
+        select: { date: true, instanceId: true, offerId: true, adId: true, event: true, count: true },
+      })
+    : [];
+
   const groups = new Map<
     string,
     { label: string; sublabel?: string; ids?: MetricRow["ids"]; t: RawTotals }
@@ -219,6 +240,23 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
     totals.conversions += r.conversions;
     totals.revenue += r.revenue;
     day(r.date).revenue += r.revenue;
+  }
+
+  // Step events — only for offers whose events are mapped, joined like revenue
+  for (const r of eventRows) {
+    const steps = stepMap.get(`${r.instanceId}:${r.offerId}`);
+    if (!steps) continue;
+    const ctx = r.adId ? adMap.get(r.adId) : undefined;
+    if (!ctx || !inDrill(ctx)) continue;
+    const g = group(ctx, r.date);
+    if (r.event === steps.step1) {
+      g.t.step1 += r.count;
+      totals.step1 += r.count;
+    }
+    if (r.event === steps.step2) {
+      g.t.step2 += r.count;
+      totals.step2 += r.count;
+    }
   }
 
   const rows = [...groups.entries()]
