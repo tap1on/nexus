@@ -1,6 +1,8 @@
 services:
   web:
     build: .
+    # Named so the worker can reuse this exact image instead of building its own.
+    image: nexus-app
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -16,7 +18,7 @@ services:
     command: sh -c "npx prisma db push --skip-generate && npm run start"
 
   worker:
-    build: .
+    image: nexus-app
     restart: unless-stopped
     env_file: .env
     environment:
