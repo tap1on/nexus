@@ -68,6 +68,39 @@ docker compose exec web npm run create-admin -- you@company.com <password> "Your
 - The SQLite database lives in the `nexus-data` volume; back it up by copying
   `/app/prisma/data/nexus.db` (it's WAL-mode; `sqlite3 ... ".backup"` is safest)
 
+### 3b. Edge/CDN setup (Cloudflare in front of Caddy)
+
+Production runs one droplet (EU) with Caddy as the TLS reverse proxy and
+Cloudflare (free plan) proxying the domain. Cloudflare terminates TLS near the
+visitor and caches the content-hashed `/_next/static/*` assets at its edge, so
+far-away users (e.g. Australia) only pay the EU round trip for the HTML, not
+for connection setup and static assets. **Do not run a second app install per
+region** — the SQLite database is the single source of truth and two installs
+would diverge immediately.
+
+Cloudflare dashboard:
+1. Add the site, free plan; DNS A record → droplet IP, **Proxied** (orange
+   cloud); switch the registrar's nameservers to Cloudflare's.
+2. SSL/TLS → overview → mode **Full (strict)**.
+3. SSL/TLS → Origin Server → **Create Certificate** (PEM, 15 years). This
+   replaces Let's Encrypt on the droplet, so cert issuance can't break behind
+   the proxy.
+4. Turn on "Always Use HTTPS" and HTTP/3.
+
+Droplet (`/etc/caddy/Caddyfile`):
+
+```
+aiurnexus.com {
+  tls /etc/caddy/cf-origin.pem /etc/caddy/cf-origin.key
+  encode zstd gzip
+  reverse_proxy 127.0.0.1:3000
+}
+```
+
+Save the origin cert/key at those paths (`chmod 600`, `chown caddy:caddy`),
+then `systemctl reload caddy`. Verify with a repeated
+`curl -sI https://<domain>/_next/static/...` → `cf-cache-status: HIT`.
+
 ## 4. Wiring up the integrations (admin UI)
 
 Order matters the first time:
