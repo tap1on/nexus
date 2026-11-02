@@ -159,7 +159,7 @@ export function OffersPanel({
           <button className="btn btn-psi" onClick={fetchRunnable} disabled={busy || !instanceId}>
             {busy ? "Scanning…" : "Fetch Runnable Offers"}
           </button>
-          <div className="flex items-end gap-2 ml-auto">
+          <div className="flex flex-wrap items-end gap-2 ml-auto">
             <div>
               <label className="block text-xs text-ink-3 uppercase tracking-wider mb-1">
                 Manual: Name
@@ -167,7 +167,7 @@ export function OffersPanel({
               <input className="input" value={manual.name}
                 onChange={(e) => setManual({ ...manual, name: e.target.value })} />
             </div>
-            <div className="min-w-72">
+            <div className="min-w-0 flex-1 sm:min-w-72">
               <label className="block text-xs text-ink-3 uppercase tracking-wider mb-1">
                 Tracking URL
               </label>

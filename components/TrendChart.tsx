@@ -111,12 +111,26 @@ function ChartTooltip({
   );
 }
 
+function useNarrow() {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
+
 export function TrendChart({ daily }: { daily: Point[] }) {
   const { spend: SPEND, revenue: REVENUE, grid: GRID, ink2: INK2, cursor } = useThemeColors();
+  // On phones the end-of-line labels don't fit; the legend still names the series.
+  const narrow = useNarrow();
   return (
-    <div className="panel p-4">
+    <div className="panel p-3 sm:p-4">
       <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={daily} margin={{ top: 6, right: 70, left: 4, bottom: 0 }}>
+        <LineChart data={daily} margin={{ top: 6, right: narrow ? 12 : 70, left: 4, bottom: 0 }}>
           <CartesianGrid stroke={GRID} vertical={false} />
           <XAxis
             dataKey="date"
@@ -151,7 +165,7 @@ export function TrendChart({ daily }: { daily: Point[] }) {
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4 }}
-            label={endLabel("Spend", SPEND, daily.length)}
+            {...(narrow ? {} : { label: endLabel("Spend", SPEND, daily.length) })}
             isAnimationActive={false}
           />
           <Line
@@ -162,7 +176,7 @@ export function TrendChart({ daily }: { daily: Point[] }) {
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4 }}
-            label={endLabel("Revenue", REVENUE, daily.length)}
+            {...(narrow ? {} : { label: endLabel("Revenue", REVENUE, daily.length) })}
             isAnimationActive={false}
           />
         </LineChart>

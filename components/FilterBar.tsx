@@ -106,10 +106,10 @@ export function FilterBar({
           </button>
         );
       })}
-      <div className="flex items-center gap-1 ml-1">
+      <div className="flex items-center gap-1 ml-1 flex-wrap">
         <input
           type="date"
-          className="input text-sm"
+          className="input text-sm min-w-0"
           value={f}
           max={today}
           onChange={(e) => setF(e.target.value)}
@@ -117,7 +117,7 @@ export function FilterBar({
         <span className="text-ink-3">→</span>
         <input
           type="date"
-          className="input text-sm"
+          className="input text-sm min-w-0"
           value={t}
           max={today}
           onChange={(e) => setT(e.target.value)}
@@ -147,7 +147,7 @@ export function FilterBar({
           </select>
         )}
         <select
-          className="select text-sm max-w-56"
+          className="select text-sm max-w-full sm:max-w-56"
           value={account}
           onChange={(e) =>
             apply({
@@ -168,7 +168,7 @@ export function FilterBar({
         </select>
         {account && (
           <select
-            className="select text-sm max-w-56"
+            className="select text-sm max-w-full sm:max-w-56"
             value={campaign}
             onChange={(e) =>
               apply({
@@ -188,7 +188,7 @@ export function FilterBar({
         )}
         {campaign && (
           <select
-            className="select text-sm max-w-56"
+            className="select text-sm max-w-full sm:max-w-56"
             value={adset}
             onChange={(e) =>
               apply({ adset: e.target.value, group: e.target.value ? "ad" : "adset" })
