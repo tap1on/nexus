@@ -60,6 +60,10 @@ model Offer {
   instanceId     String
   instance       EverflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   networkOfferId String? // Everflow network_offer_id; null for manually added offers
+  // Everflow destination URL id when the offer was added for a specific landing
+  // page; "" = the offer's default URL. The same EF offer can be added once per
+  // landing page, each as its own Offer row with its own tracking URL.
+  networkUrlId   String           @default("")
   name           String
   trackingUrl    String // base tracking URL; subids + source_id are appended on generation
   status         String           @default("ACTIVE") // ACTIVE | ARCHIVED
@@ -69,7 +73,7 @@ model Offer {
   step2Event     String           @default("")
   createdAt      DateTime         @default(now())
 
-  @@unique([instanceId, networkOfferId])
+  @@unique([instanceId, networkOfferId, networkUrlId])
 }
 
 // One row per ad per day (Meta spend side)

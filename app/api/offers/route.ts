@@ -8,6 +8,8 @@ const CreateOffer = z.object({
   instanceId: z.string().min(1),
   name: z.string().min(1),
   networkOfferId: z.string().regex(/^\d+$/).optional(),
+  // Everflow destination URL id; "0"/absent = the offer's default URL
+  networkUrlId: z.string().regex(/^\d+$/).optional(),
   trackingUrl: z.string().url().optional(),
 });
 
@@ -21,6 +23,11 @@ export async function POST(req: Request) {
       );
     }
     const { instanceId, name, networkOfferId } = body.data;
+    // "0" is Everflow's id for the default destination — same slot as "".
+    const networkUrlId =
+      body.data.networkUrlId && body.data.networkUrlId !== "0"
+        ? body.data.networkUrlId
+        : "";
     let trackingUrl = body.data.trackingUrl ?? "";
 
     const instance = await db.everflowInstance.findUnique({
@@ -31,16 +38,23 @@ export async function POST(req: Request) {
     }
     if (networkOfferId) {
       const dupe = await db.offer.findFirst({
-        where: { instanceId, networkOfferId },
+        where: { instanceId, networkOfferId, networkUrlId },
       });
       if (dupe) {
-        return NextResponse.json({ error: "Offer already added" }, { status: 409 });
+        return NextResponse.json(
+          { error: "Offer already added with this URL" },
+          { status: 409 }
+        );
       }
     }
     // API-sourced offers: get the canonical link if none was supplied.
     if (!trackingUrl && networkOfferId) {
       try {
-        trackingUrl = await fetchOfferTrackingUrl(instance.apiKey, networkOfferId);
+        trackingUrl = await fetchOfferTrackingUrl(
+          instance.apiKey,
+          networkOfferId,
+          networkUrlId
+        );
       } catch (e) {
         return NextResponse.json(
           { error: e instanceof Error ? e.message : "Tracking URL fetch failed" },
@@ -59,6 +73,7 @@ export async function POST(req: Request) {
         instanceId,
         name,
         networkOfferId: networkOfferId ?? null,
+        networkUrlId,
         trackingUrl,
       },
     });

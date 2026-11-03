@@ -47,6 +47,7 @@ export default async function EverflowPage() {
           name: o.name,
           instanceName: o.instance.name,
           networkOfferId: o.networkOfferId,
+          networkUrlId: o.networkUrlId,
           trackingUrl: o.trackingUrl,
           status: o.status,
           step1Event: o.step1Event,

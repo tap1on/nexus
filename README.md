@@ -144,8 +144,13 @@ with row counts and errors. Admins can trigger a manual **Sync Now**.
   listing the event names seen in synced data (or a custom name). Mapped
   events show as "Step 1" / "Step 2" columns on the dashboard, left of Conv,
   joined to ads via sub4 like revenue. Unmapped events are stored but not shown.
-- Manual offers (no Everflow offer id) can't be mapped — reporting rows are
-  keyed by the network offer id.
+- Manual offers can be mapped too: set their numeric Everflow offer id
+  (Actions → Set EF ID, or the EF Offer ID field when adding) — reporting rows
+  are keyed by the network offer id, so mapping needs it.
+- An Everflow offer with several destination URLs (landing pages) can be added
+  once per URL (the URLs… button in Fetch Runnable Offers); each becomes its
+  own renameable entry in the Link Generator. Step mappings are shared across
+  all entries of the same Everflow offer — changing one updates the others.
 
 ## 6. Scheduled jobs / limits
 

@@ -224,13 +224,17 @@ export async function fetchRunnableOffers(
   return out;
 }
 
-/** Canonical tracking URL for an offer (urlId 0 = default destination). */
+/**
+ * Tracking URL for an offer. urlId picks a specific destination URL
+ * (landing page); "0" / "" = the offer's default destination.
+ */
 export async function fetchOfferTrackingUrl(
   apiKey: string,
-  networkOfferId: string
+  networkOfferId: string,
+  urlId = "0"
 ): Promise<string> {
   const res = await fetch(
-    `${BASE}/offers/${networkOfferId}/url/0`,
+    `${BASE}/offers/${networkOfferId}/url/${urlId || "0"}`,
     { headers: { "X-Eflow-API-Key": apiKey }, cache: "no-store" }
   );
   if (!res.ok) {
@@ -240,6 +244,54 @@ export async function fetchOfferTrackingUrl(
   }
   const json = (await res.json()) as { url?: string };
   return json.url ?? "";
+}
+
+export type EfOfferUrl = {
+  urlId: string; // network_offer_url_id
+  name: string;
+};
+
+/**
+ * Extra destination URLs (landing page variants) configured on an offer,
+ * from the offer detail's relationship.urls. The default destination (urlId
+ * 0) is not included — callers always offer it as the first choice. The
+ * entry shape isn't pinned down in Everflow's affiliate docs, so parse
+ * defensively and drop anything without a usable id.
+ */
+export async function fetchOfferUrls(
+  apiKey: string,
+  networkOfferId: string
+): Promise<EfOfferUrl[]> {
+  const res = await fetch(`${BASE}/offers/${networkOfferId}`, {
+    headers: { "X-Eflow-API-Key": apiKey },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new EverflowApiError(
+      `Everflow API HTTP ${res.status} fetching offer ${networkOfferId}`
+    );
+  }
+  const json = (await res.json()) as {
+    relationship?: {
+      urls?: {
+        entries?: Array<{
+          network_offer_url_id?: number | string;
+          name?: string;
+          preview_url?: string;
+        }>;
+      };
+    };
+  };
+  const out: EfOfferUrl[] = [];
+  for (const e of json.relationship?.urls?.entries || []) {
+    const urlId = String(e.network_offer_url_id ?? "").trim();
+    if (!/^\d+$/.test(urlId) || urlId === "0") continue;
+    out.push({
+      urlId,
+      name: (e.name || e.preview_url || `URL ${urlId}`).trim(),
+    });
+  }
+  return out;
 }
 
 /** Validate an API key / find the timezone id for Europe/Berlin at setup time. */

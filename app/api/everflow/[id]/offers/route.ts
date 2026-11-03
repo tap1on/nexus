@@ -18,14 +18,20 @@ export async function POST(
       fetchRunnableOffers(instance.apiKey),
       db.offer.findMany({
         where: { instanceId: id, networkOfferId: { not: null } },
-        select: { networkOfferId: true },
+        select: { networkOfferId: true, networkUrlId: true },
       }),
     ]);
-    const known = new Set(existing.map((o) => o.networkOfferId));
+    // Which destination URLs of each offer are already added ("" = default).
+    const added = new Map<string, string[]>();
+    for (const o of existing) {
+      const list = added.get(o.networkOfferId!) ?? [];
+      list.push(o.networkUrlId);
+      added.set(o.networkOfferId!, list);
+    }
     return NextResponse.json({
       offers: offers.map((o) => ({
         ...o,
-        alreadyAdded: known.has(o.networkOfferId),
+        addedUrlIds: added.get(o.networkOfferId) ?? [],
       })),
     });
   });
