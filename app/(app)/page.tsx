@@ -148,6 +148,13 @@ export default async function DashboardPage({
 
   // Clicking a row drills one level down.
   const rows = stats.rows.map((r) => {
+    // "unassigned" isn't a user id, so that row can't become a buyer filter.
+    if (groupBy === "buyer" && r.key !== "unassigned") {
+      return {
+        ...r,
+        href: href({ buyer: r.key, account: "", campaign: "", adset: "", group: "account" }),
+      };
+    }
     if (groupBy === "account") {
       return { ...r, href: href({ account: r.key, campaign: "", adset: "", group: "campaign" }) };
     }
