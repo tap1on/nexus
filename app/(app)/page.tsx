@@ -90,8 +90,17 @@ export default async function DashboardPage({
   }
   const accountName = scopedAccounts.find((a) => a.id === account)?.name ?? "";
 
-  // Default grouping follows the drill level, like Ads Manager tabs.
-  const defaultGroup: GroupBy = adset ? "ad" : campaign ? "adset" : account ? "campaign" : "account";
+  // Default grouping follows the drill level, like Ads Manager tabs. At the
+  // top level admins land on the buyer overview, buyers on their ad accounts.
+  const defaultGroup: GroupBy = adset
+    ? "ad"
+    : campaign
+      ? "adset"
+      : account
+        ? "campaign"
+        : user.role === "ADMIN" && !buyerFilter
+          ? "buyer"
+          : "account";
   const groupBy: GroupBy = GROUPS.includes(sp.group as GroupBy)
     ? (sp.group as GroupBy)
     : defaultGroup;
