@@ -12,19 +12,19 @@ export function LinkGenerator({
 }) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [offerId, setOfferId] = useState(offers[0]?.id ?? "");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "link" | "combo">("");
 
   const account = accounts.find((a) => a.id === accountId);
   const offer = offers.find((o) => o.id === offerId);
   const link =
     account && offer ? buildTrackingLink(offer.trackingUrl, account.metaAccountId) : "";
 
-  async function copy() {
-    if (!link) return;
+  async function copy(text: string, kind: "link" | "combo") {
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      setTimeout(() => setCopied(""), 2000);
     } catch {
       // clipboard may be unavailable; the link is selectable below
     }
@@ -90,9 +90,16 @@ export function LinkGenerator({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button className="btn btn-psi" onClick={copy}>
-              {copied ? "Copied ✓" : "Copy Link"}
+          <div className="flex items-center gap-3 flex-wrap">
+            <button className="btn btn-psi" onClick={() => copy(link, "link")}>
+              {copied === "link" ? "Copied ✓" : "Copy Link"}
+            </button>
+            <button
+              className="btn"
+              title="Copies the ad account name and the link, ready to paste into chat"
+              onClick={() => account && copy(`${account.label}\n${link}`, "combo")}
+            >
+              {copied === "combo" ? "Copied ✓" : "Copy Link + Ad Account"}
             </button>
             <p className="text-ink-3 text-xs">
               Carries sub1/sub3/sub4 (Meta macros) + source_id (your account id,
