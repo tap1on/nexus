@@ -13,7 +13,7 @@ export default async function LinksPage() {
         ...(user.role === "BUYER" ? { ownerId: user.id } : {}),
       },
       orderBy: { name: "asc" },
-      select: { id: true, metaAccountId: true, name: true, bm: { select: { name: true } } },
+      select: { id: true, metaAccountId: true, name: true, owner: { select: { name: true } } },
     }),
     db.offer.findMany({
       where: { status: "ACTIVE", instance: { status: "ACTIVE" } },
@@ -33,7 +33,7 @@ export default async function LinksPage() {
       accounts={accounts.map((a) => ({
         id: a.id,
         metaAccountId: a.metaAccountId,
-        label: `${a.name} (${a.bm.name})`,
+        label: `${a.name} (${a.owner?.name ?? "Unassigned"})`,
       }))}
       offers={offers.map((o) => ({
         id: o.id,
