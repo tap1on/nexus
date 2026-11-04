@@ -22,7 +22,11 @@ export type StatsQuery = {
 export type StatsResult = {
   rows: MetricRow[];
   totals: MetricRow;
-  /** EF revenue in range whose sub4 (ad id) doesn't match any known Meta ad */
+  /**
+   * EF revenue in range attributable to neither an ad (sub4) nor an ad
+   * account (source_id). Source-id-only revenue is attributed at account
+   * level instead of counting here.
+   */
   unmatchedRevenue: number;
   unmatchedConversions: number;
   /** daily matched series for the trend chart */
@@ -122,7 +126,7 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
     (!q.campaignId || ctx.campaignId === q.campaignId) &&
     (!q.adsetId || ctx.adsetId === q.adsetId);
 
-  const [metaRows, adMap] = await Promise.all([
+  const [metaRows, adMap, scopedAccounts] = await Promise.all([
     db.metaStat.findMany({
       where,
       select: {
@@ -134,13 +138,47 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
       },
     }),
     buildAdContextMap(q.accountIds),
+    db.adAccount.findMany({
+      where: q.accountIds ? { id: { in: q.accountIds } } : undefined,
+      select: {
+        id: true,
+        metaAccountId: true,
+        name: true,
+        ownerId: true,
+        owner: { select: { name: true } },
+      },
+    }),
   ]);
+
+  // source_id fallback: a conversion whose sub4 broke but whose source_id
+  // (the link's ad account id) survived is attributed to that account. It
+  // shows on the buyer/account/day groupings and in the totals, but can't
+  // appear at campaign/adset/ad level — nothing ties it there.
+  const accountCtx = new Map<string, AdContext>();
+  for (const a of scopedAccounts) {
+    accountCtx.set(a.metaAccountId, {
+      accountId: a.id,
+      metaAccountId: a.metaAccountId,
+      accountName: a.name,
+      ownerId: a.ownerId,
+      ownerName: a.owner?.name ?? "Unassigned",
+      campaignId: "",
+      campaignName: "",
+      adsetId: "",
+      adsetName: "",
+      adId: "",
+      adName: "",
+    });
+  }
+  const drilledBelowAccount = Boolean(q.campaignId || q.adsetId);
+  const showsAccountLevel = ["buyer", "account", "date"].includes(q.groupBy);
 
   const efRows = await db.everflowStat.findMany({
     where: { date: { gte: q.from, lte: q.to } },
     select: {
       date: true,
       adId: true,
+      sourceId: true,
       clicks: true,
       conversions: true,
       revenue: true,
@@ -164,7 +202,7 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
   const eventRows = stepMap.size
     ? await db.everflowEventStat.findMany({
         where: { date: { gte: q.from, lte: q.to } },
-        select: { date: true, instanceId: true, offerId: true, adId: true, event: true, count: true },
+        select: { date: true, instanceId: true, offerId: true, adId: true, sourceId: true, event: true, count: true },
       })
     : [];
 
@@ -222,41 +260,68 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
   let unmatchedConversions = 0;
   for (const r of efRows) {
     const ctx = r.adId ? adMap.get(r.adId) : undefined;
-    if (!ctx) {
-      // Either truly broken subids, or an ad belonging to accounts outside
-      // the caller's scope. Only count it as unmatched for unscoped queries.
-      if (!scoped) {
-        unmatchedRevenue += r.revenue;
-        unmatchedConversions += r.conversions;
-      }
+    if (ctx) {
+      if (!inDrill(ctx)) continue; // known ad, but outside the campaign/adset drill
+      const g = group(ctx, r.date);
+      g.t.efClicks += r.clicks;
+      g.t.conversions += r.conversions;
+      g.t.revenue += r.revenue;
+      totals.efClicks += r.clicks;
+      totals.conversions += r.conversions;
+      totals.revenue += r.revenue;
+      day(r.date).revenue += r.revenue;
       continue;
     }
-    if (!inDrill(ctx)) continue; // known ad, but outside the campaign/adset drill
-    const g = group(ctx, r.date);
-    g.t.efClicks += r.clicks;
-    g.t.conversions += r.conversions;
-    g.t.revenue += r.revenue;
-    totals.efClicks += r.clicks;
-    totals.conversions += r.conversions;
-    totals.revenue += r.revenue;
-    day(r.date).revenue += r.revenue;
+    // No ad match — fall back to source_id account attribution.
+    const acct =
+      !drilledBelowAccount && r.sourceId ? accountCtx.get(r.sourceId) : undefined;
+    if (acct) {
+      if (showsAccountLevel) {
+        const g = group(acct, r.date);
+        g.t.efClicks += r.clicks;
+        g.t.conversions += r.conversions;
+        g.t.revenue += r.revenue;
+      }
+      totals.efClicks += r.clicks;
+      totals.conversions += r.conversions;
+      totals.revenue += r.revenue;
+      day(r.date).revenue += r.revenue;
+      continue;
+    }
+    // Truly orphaned (or outside the caller's scope). Only count it as
+    // unmatched for unscoped queries, where we can actually judge that.
+    if (!scoped) {
+      unmatchedRevenue += r.revenue;
+      unmatchedConversions += r.conversions;
+    }
   }
 
   // Step events — only for offers whose events are mapped, joined like revenue
+  // (including the source_id account fallback).
   for (const r of eventRows) {
     const steps = stepMap.get(`${r.instanceId}:${r.offerId}`);
     if (!steps) continue;
+    const s1 = r.event === steps.step1 ? r.count : 0;
+    const s2 = r.event === steps.step2 ? r.count : 0;
+    if (!s1 && !s2) continue;
     const ctx = r.adId ? adMap.get(r.adId) : undefined;
-    if (!ctx || !inDrill(ctx)) continue;
-    const g = group(ctx, r.date);
-    if (r.event === steps.step1) {
-      g.t.step1 += r.count;
-      totals.step1 += r.count;
+    if (ctx) {
+      if (!inDrill(ctx)) continue;
+      const g = group(ctx, r.date);
+      g.t.step1 += s1;
+      g.t.step2 += s2;
+    } else {
+      const acct =
+        !drilledBelowAccount && r.sourceId ? accountCtx.get(r.sourceId) : undefined;
+      if (!acct) continue;
+      if (showsAccountLevel) {
+        const g = group(acct, r.date);
+        g.t.step1 += s1;
+        g.t.step2 += s2;
+      }
     }
-    if (r.event === steps.step2) {
-      g.t.step2 += r.count;
-      totals.step2 += r.count;
-    }
+    totals.step1 += s1;
+    totals.step2 += s2;
   }
 
   const rows = [...groups.entries()]

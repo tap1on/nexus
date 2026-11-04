@@ -29,8 +29,8 @@ Everflow's partner attribution guide) so the network can send Conversions API
 events back to Meta. Nexus does not store it.
 
 `source_id` carries the Meta ad account id, so the network can score traffic
-quality per account, and Nexus can attribute stray revenue to an account on
-the Unmatched page even when the sub macros break.
+quality per account, and Nexus can still attribute stray revenue to an
+account even when the sub macros break.
 
 Matching is strict on **sub4 = ad id**. Revenue whose sub4 doesn't correspond to
 a known Meta ad lands on the **Unmatched Revenue** page (admin-only) — that page
@@ -130,6 +130,13 @@ with row counts and errors. Admins can trigger a manual **Sync Now**.
 - Join: EF row → Meta ad via sub4. The ad→campaign/adset/account/buyer context
   comes from the most recent Meta data for that ad (not range-limited, so a
   conversion landing days after the ad stopped spending still attributes).
+- Fallback: an EF row whose sub4 matches no known ad but whose source_id
+  matches an ad account is attributed to that account. It counts in the
+  buyer / ad account / day groupings, the KPI totals and the trend chart, but
+  not at campaign/adset/ad level (nothing ties it there) — so a drilled view's
+  rows can sum to less than the account's total. Only revenue matching
+  neither an ad nor an account counts as unmatched (the Unmatched page still
+  lists every sub4 miss as the canary for broken links).
 - Click loss = (Meta link clicks − EF clicks) / Meta clicks: a persistent gap
   means tracking problems or bot filtering.
 - Numbers for recent days keep moving between syncs (Meta restates spend, EF
