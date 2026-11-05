@@ -330,6 +330,27 @@ export async function queryStats(q: StatsQuery): Promise<StatsResult> {
       q.groupBy === "date" ? a.key.localeCompare(b.key) : b.spend - a.spend
     );
 
+  // Attach Meta on/off statuses to campaign/adset/ad rows (the row key is the
+  // Meta entity id at these levels). Rows without a synced status stay bare.
+  if (["campaign", "adset", "ad"].includes(q.groupBy) && rows.length) {
+    const ents = await db.metaEntity.findMany({
+      where: { entityId: { in: rows.map((r) => r.key) } },
+      select: { entityId: true, level: true, status: true, effectiveStatus: true },
+    });
+    const byId = new Map(ents.map((e) => [e.entityId, e]));
+    for (const r of rows) {
+      const e = byId.get(r.key);
+      if (e) {
+        r.entity = {
+          id: e.entityId,
+          level: e.level as "CAMPAIGN" | "ADSET" | "AD",
+          status: e.status,
+          effectiveStatus: e.effectiveStatus,
+        };
+      }
+    }
+  }
+
   const dailySeries = [...daily.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, v]) => ({

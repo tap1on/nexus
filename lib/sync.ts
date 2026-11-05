@@ -1,6 +1,6 @@
 import { AdAccount, BusinessManager, EverflowInstance } from "@prisma/client";
 import { db } from "./db";
-import { fetchAdInsights } from "./meta";
+import { fetchAdInsights, fetchEntityStatuses } from "./meta";
 import { fetchDailyEntityStats, fetchDailyEventStats } from "./everflow";
 import { todayBerlin, shiftDate, dateRange } from "./dates";
 
@@ -70,6 +70,45 @@ async function syncOneMetaAccount(
       );
       upserted += batch.length;
     });
+
+    // Entity statuses (for the Status column / pause buttons). Meta listings
+    // omit deleted entities, so anything we track that didn't come back is
+    // marked DELETED.
+    const statuses = await fetchEntityStatuses(
+      acc.bm.systemUserToken,
+      acc.metaAccountId
+    );
+    await chunked(statuses, async (batch) => {
+      await db.$transaction(
+        batch.map((s) =>
+          db.metaEntity.upsert({
+            where: { entityId: s.id },
+            create: {
+              entityId: s.id,
+              level: s.level,
+              adAccountId: acc.id,
+              status: s.status,
+              effectiveStatus: s.effective_status,
+            },
+            update: {
+              level: s.level,
+              adAccountId: acc.id,
+              status: s.status,
+              effectiveStatus: s.effective_status,
+            },
+          })
+        )
+      );
+    });
+    await db.metaEntity.updateMany({
+      where: {
+        adAccountId: acc.id,
+        entityId: { notIn: statuses.map((s) => s.id) },
+        effectiveStatus: { not: "DELETED" },
+      },
+      data: { status: "DELETED", effectiveStatus: "DELETED" },
+    });
+
     await db.syncRun.update({
       where: { id: run.id },
       data: { status: "OK", finishedAt: new Date(), rowsUpserted: upserted },

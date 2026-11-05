@@ -145,6 +145,20 @@ model EverflowEventStat {
   @@index([adId])
 }
 
+// Current on/off state of every Meta campaign / ad set / ad, synced by the
+// worker alongside insights. Entities that the account listing no longer
+// returns are marked DELETED (Meta omits deleted entities from listings).
+model MetaEntity {
+  entityId        String   @id // Meta campaign/adset/ad id (globally unique)
+  level           String // CAMPAIGN | ADSET | AD
+  adAccountId     String
+  status          String   @default("") // the entity's own switch: ACTIVE | PAUSED | ...
+  effectiveStatus String   @default("") // includes parent causes: CAMPAIGN_PAUSED, DELETED, ...
+  updatedAt       DateTime @updatedAt
+
+  @@index([adAccountId])
+}
+
 // Unused since the ad-thumbnail feature was removed. The empty table is kept
 // so the boot-time `prisma db push` never needs a destructive change on
 // databases that already have it.

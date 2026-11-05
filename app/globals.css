@@ -148,6 +148,8 @@ h1, h2, h3, .font-display {
   background: rgba(248, 81, 73, 0.08);
 }
 .btn-danger:hover { background: rgba(248, 81, 73, 0.18); box-shadow: none; }
+/* compact variant for buttons inside table rows */
+.btn-row { padding: 0.15rem 0.55rem; font-size: 0.62rem; letter-spacing: 0.08em; }
 
 /* ── nav ───────────────────────────────────────────────────────────── */
 .nav-link {

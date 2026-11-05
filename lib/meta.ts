@@ -23,7 +23,7 @@ export type MetaInsightRow = {
   inline_link_clicks?: string;
 };
 
-class MetaApiError extends Error {
+export class MetaApiError extends Error {
   constructor(message: string, public code?: number, public status?: number) {
     super(message);
   }
@@ -60,6 +60,92 @@ export async function discoverAdAccounts(
     url = page.paging?.next || "";
   }
   return out;
+}
+
+export type EntityLevel = "CAMPAIGN" | "ADSET" | "AD";
+
+export type MetaEntityStatusRow = {
+  id: string;
+  level: EntityLevel;
+  status: string; // the entity's own switch: ACTIVE | PAUSED | ARCHIVED | ...
+  effective_status: string; // delivery state incl. parent causes: CAMPAIGN_PAUSED, ...
+};
+
+const LEVEL_EDGE: Record<EntityLevel, string> = {
+  CAMPAIGN: "campaigns",
+  ADSET: "adsets",
+  AD: "ads",
+};
+
+/**
+ * Current statuses of all campaigns / ad sets / ads in one account. Meta's
+ * listings omit deleted entities, so the caller marks anything it knows about
+ * but doesn't get back as DELETED.
+ */
+export async function fetchEntityStatuses(
+  token: string,
+  accountId: string
+): Promise<MetaEntityStatusRow[]> {
+  const out: MetaEntityStatusRow[] = [];
+  for (const level of Object.keys(LEVEL_EDGE) as EntityLevel[]) {
+    const params = new URLSearchParams({
+      fields: "id,status,effective_status",
+      limit: "500",
+      access_token: token,
+    });
+    let url = `${BASE}/act_${accountId}/${LEVEL_EDGE[level]}?${params.toString()}`;
+    while (url) {
+      const page = await metaGet<{
+        data: Array<{ id: string; status: string; effective_status: string }>;
+        paging?: { next?: string };
+      }>(url);
+      for (const e of page.data || []) {
+        out.push({
+          id: e.id,
+          level,
+          status: e.status,
+          effective_status: e.effective_status,
+        });
+      }
+      url = page.paging?.next || "";
+    }
+  }
+  return out;
+}
+
+/**
+ * Flip a campaign / ad set / ad on or off, then re-read the authoritative
+ * statuses (effective_status can stay e.g. CAMPAIGN_PAUSED after resuming an
+ * ad whose campaign is off). Requires an ads_management token.
+ */
+export async function setEntityStatus(
+  token: string,
+  entityId: string,
+  status: "ACTIVE" | "PAUSED"
+): Promise<{ status: string; effectiveStatus: string }> {
+  const res = await fetch(`${BASE}/${entityId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ status, access_token: token }).toString(),
+    cache: "no-store",
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    error?: { message?: string; code?: number };
+  };
+  if (!res.ok || json.error) {
+    throw new MetaApiError(
+      json.error?.message || `Meta API HTTP ${res.status}`,
+      json.error?.code,
+      res.status
+    );
+  }
+  const fresh = await metaGet<{ status?: string; effective_status?: string }>(
+    `${BASE}/${entityId}?fields=status,effective_status&access_token=${encodeURIComponent(token)}`
+  );
+  return {
+    status: fresh.status || status,
+    effectiveStatus: fresh.effective_status || status,
+  };
 }
 
 /**

@@ -6,6 +6,16 @@ export type MetricRow = {
   ids?: { accountId: string; campaignId: string; adsetId: string };
   /** drill-down target, filled in by the page */
   href?: string;
+  /**
+   * Meta on/off state for campaign/adset/ad rows (from the synced MetaEntity
+   * table). Absent for buyer/account/date rows and entities not yet synced.
+   */
+  entity?: {
+    id: string;
+    level: "CAMPAIGN" | "ADSET" | "AD";
+    status: string;
+    effectiveStatus: string;
+  };
   spend: number;
   revenue: number;
   profit: number;
