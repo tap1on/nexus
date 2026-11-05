@@ -12,7 +12,7 @@ import {
   lookupNode,
   GroupBy,
 } from "@/lib/stats";
-import { todayBerlin, shiftDate } from "@/lib/dates";
+import { todayBerlin } from "@/lib/dates";
 import { FilterBar } from "@/components/FilterBar";
 import { KpiTiles } from "@/components/KpiTiles";
 import { TrendChart } from "@/components/TrendChart";
@@ -43,7 +43,7 @@ export default async function DashboardPage({
   const isOpen = (id: string) => jar.get(collapseCookie(id))?.value !== "1";
 
   const today = todayBerlin();
-  const from = sp.from && /^\d{4}-\d{2}-\d{2}$/.test(sp.from) ? sp.from : shiftDate(today, -6);
+  const from = sp.from && /^\d{4}-\d{2}-\d{2}$/.test(sp.from) ? sp.from : today;
   const to = sp.to && /^\d{4}-\d{2}-\d{2}$/.test(sp.to) ? sp.to : today;
 
   // Scope: buyers see only their accounts; admins can narrow to one buyer.
@@ -91,23 +91,26 @@ export default async function DashboardPage({
   const accountName = scopedAccounts.find((a) => a.id === account)?.name ?? "";
 
   // Default grouping follows the drill level, like Ads Manager tabs. At the
-  // top level admins land on the buyer overview, buyers on their ad accounts.
+  // top level everyone lands on the buyer overview.
   const defaultGroup: GroupBy = adset
     ? "ad"
     : campaign
       ? "adset"
       : account
         ? "campaign"
-        : user.role === "ADMIN" && !buyerFilter
-          ? "buyer"
-          : "account";
+        : buyerFilter
+          ? "account"
+          : "buyer";
   const groupBy: GroupBy = GROUPS.includes(sp.group as GroupBy)
     ? (sp.group as GroupBy)
     : defaultGroup;
 
+  // Buyers see the company-wide buyer leaderboard, but every other grouping
+  // (and any drill-down) stays limited to their own ad accounts.
   let accountIds: string[] | null = null;
   if (account) accountIds = [account];
-  else if (user.role === "BUYER" || buyerFilter) accountIds = scopeIds;
+  else if (buyerFilter) accountIds = scopeIds;
+  else if (user.role === "BUYER" && groupBy !== "buyer") accountIds = scopeIds;
 
   const [stats, buyers, campaigns, adsets] = await Promise.all([
     queryStats({
@@ -149,10 +152,18 @@ export default async function DashboardPage({
   // Clicking a row drills one level down.
   const rows = stats.rows.map((r) => {
     // "unassigned" isn't a user id, so that row can't become a buyer filter.
+    // Buyers can see everyone's numbers here but only drill into their own row.
     if (groupBy === "buyer" && r.key !== "unassigned") {
+      if (user.role !== "ADMIN" && r.key !== user.id) return r;
       return {
         ...r,
-        href: href({ buyer: r.key, account: "", campaign: "", adset: "", group: "account" }),
+        href: href({
+          buyer: user.role === "ADMIN" ? r.key : "",
+          account: "",
+          campaign: "",
+          adset: "",
+          group: "account",
+        }),
       };
     }
     if (groupBy === "account") {
